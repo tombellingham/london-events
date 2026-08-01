@@ -8,12 +8,17 @@
  * without notice — so we validate defensively rather than trusting it blindly.
  */
 
-import type { Event } from "./types";
+import type { Event } from "../types";
+import { parseLondonDateTime, stripHtml } from "../dates";
 
 const FEED_URL =
   "https://www.gresham.ac.uk/sites/default/files/attachments/whatson.json";
 const SITE_ORIGIN = "https://www.gresham.ac.uk";
 const SOURCE_NAME = "Gresham College";
+
+// Auto-discovered by the aggregator's scrapers/ loader — must be exported
+// by every adapter module.
+export const name = SOURCE_NAME;
 
 // Only the fields we actually care about. The feed has a lot more
 // (vocabOne, hiddenNodeRefs, content HTML, months, etc.) that we ignore.
@@ -29,39 +34,6 @@ interface GreshamRawEvent {
 
 interface GreshamFeed {
   events: GreshamRawEvent[];
-}
-
-/**
- * The feed's date strings have no timezone info and appear to be London
- * local time (both GMT and BST periods show up across the feed with no
- * offset adjustment). We parse the components manually rather than handing
- * the string to `new Date(...)`, since that would interpret it as UTC and
- * silently shift every event by an hour half the year.
- */
-function parseLondonDateTime(raw: string): Date | null {
-  const match = raw.match(
-    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/
-  );
-  if (!match) return null;
-
-  const [, year, month, day, hour, minute, second] = match;
-
-  // Construct as UTC components first, then correct for the London/UTC
-  // offset at that instant. This avoids relying on the server's local
-  // timezone (which may not be Europe/London in CI).
-  const naiveUtc = new Date(
-    Date.UTC(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hour),
-      Number(minute),
-      Number(second)
-    )
-  );
-
-  const offsetMinutes = getLondonOffsetMinutes(naiveUtc);
-  return new Date(naiveUtc.getTime() - offsetMinutes * 60_000);
 }
 
 /** Returns the UTC offset (in minutes) that Europe/London observes at the given instant. */
