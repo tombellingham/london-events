@@ -1,72 +1,5 @@
-import { readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import type { Event } from "./types";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCRAPERS_DIR = join(__dirname, "scrapers");
-
-interface ScraperModule {
-  scrape: () => Promise<Event[]>;
-  name?: string;
-}
-
-interface AdapterResult {
-  name: string;
-  events: Event[];
-  error: string | null;
-}
-
-/**
- * Loads every adapter module from scrapers/ automatically — adding a new
- * scraper is just "drop a file in scrapers/", nothing here needs editing.
- *
- * Conventions each adapter module must follow:
- *   - export an async `scrape(): Promise<Event[]>`
- *   - export a `name: string` for display (falls back to the filename if
- *     omitted, so this won't hard-fail on a module that forgets it)
- */
-async function loadAdapters(): Promise<
-  Array<{ name: string; scrape: () => Promise<Event[]> }>
-> {
-  const files = readdirSync(SCRAPERS_DIR).filter(
-    (f) => f.endsWith(".ts") && !f.endsWith(".d.ts") && !f.endsWith(".test.ts")
-  );
-
-  const adapters: Array<{ name: string; scrape: () => Promise<Event[]> }> = [];
-
-  for (const file of files) {
-    const fullPath = join(SCRAPERS_DIR, file);
-    const mod = (await import(pathToFileURL(fullPath).href)) as ScraperModule;
-
-    if (typeof mod.scrape !== "function") {
-      console.warn(`⚠ Skipping ${file}: no exported scrape() function`);
-      continue;
-    }
-
-    adapters.push({
-      name: mod.name ?? file.replace(/\.ts$/, ""),
-      scrape: mod.scrape,
-    });
-  }
-
-  return adapters;
-}
-
-async function runAdapter(adapter: {
-  name: string;
-  scrape: () => Promise<Event[]>;
-}): Promise<AdapterResult> {
-  try {
-    const events = await adapter.scrape();
-    return { name: adapter.name, events, error: null };
-  } catch (err) {
-    // Isolate failures per-adapter so one broken site doesn't take down the
-    // whole build.
-    const message = err instanceof Error ? err.message : String(err);
-    return { name: adapter.name, events: [], error: message };
-  }
-}
+import { runAllAdapters } from "./adapters";
 
 function printEvent(event: Event, indent = "  ") {
   console.log(`${indent}Title:       ${event.title}`);
@@ -83,14 +16,7 @@ function truncate(text: string, max: number): string {
 }
 
 async function main() {
-  const adapters = await loadAdapters();
-  console.log(
-    `Discovered ${adapters.length} adapter(s): ${adapters
-      .map((a) => a.name)
-      .join(", ")}\n`
-  );
-
-  const results = await Promise.all(adapters.map(runAdapter));
+  const results = await runAllAdapters();
 
   console.log("── Summary ──────────────────────────────");
   for (const result of results) {
@@ -113,9 +39,7 @@ async function main() {
       console.log("  (no events found)");
       continue;
     }
-    for (var i = 0; i < Math.min(1, result.events.length); i++) {
-      printEvent(result.events[i], "    ");
-    }
+    printEvent(result.events[0]);
   }
 
   const totalEvents = results.reduce((sum, r) => sum + r.events.length, 0);
@@ -132,6 +56,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Aggregator crashed:", err);
+  console.error("Runner crashed:", err);
   process.exit(1);
 });
