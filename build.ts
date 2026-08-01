@@ -27,9 +27,14 @@ interface ScraperStatus {
   eventCount: number;
 }
 
+interface DateGroup {
+  date: string;
+  events: SerializedEvent[];
+}
+
 interface BuildOutput {
   scrapers: ScraperStatus[];
-  events: SerializedEvent[];
+  dates: DateGroup[];
 }
 
 async function main() {
@@ -94,7 +99,7 @@ async function main() {
     process.exit(1);
   }
 
-  const serialized: SerializedEvent[] = filtered.map((e) => serializeEvent(e));
+  const dates: DateGroup[] = groupEventsByDay(filtered);
   const scraperStatuses: ScraperStatus[] = results.map((r) => {
     const filteredCountForSource = filtered.filter(
       (e) => e.source === r.name
@@ -111,12 +116,14 @@ async function main() {
 
   const output: BuildOutput = {
     scrapers: scraperStatuses,
-    events: serialized,
+    dates,
   };
 
   mkdirSync(OUTPUT_DIR, { recursive: true });
   writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2), "utf-8");
-  console.log(`\n✓ Wrote ${filtered.length} events to ${OUTPUT_PATH}`);
+  console.log(
+    `\n✓ Wrote ${filtered.length} events across ${dates.length} day(s) to ${OUTPUT_PATH}`
+  );
 }
 
 function serializeEvent(event: Event): SerializedEvent {
@@ -128,6 +135,45 @@ function serializeEvent(event: Event): SerializedEvent {
     url: event.url,
     source: event.source,
   };
+}
+
+/**
+ * Groups already-filtered, already-chronologically-sorted events by the
+ * London calendar day their startDate falls on — NOT the UTC day, since an
+ * event at 11pm BST is still "today" in London even though its UTC
+ * timestamp has already rolled into the next date.
+ *
+ * Relies on `events` being pre-sorted by startDate ascending: JS Map
+ * preserves insertion order, so grouping in a single pass naturally
+ * produces day-groups in chronological order too, with no separate sort
+ * needed afterwards. Only dates with at least one event appear — there's
+ * no pre-seeding of empty day slots.
+ */
+function groupEventsByDay(events: Event[]): DateGroup[] {
+  const groups = new Map<string, SerializedEvent[]>();
+
+  for (const event of events) {
+    const dayKey = formatLondonDateKey(event.startDate);
+    if (!groups.has(dayKey)) {
+      groups.set(dayKey, []);
+    }
+    groups.get(dayKey)!.push(serializeEvent(event));
+  }
+
+  return Array.from(groups.entries()).map(([date, dayEvents]) => ({
+    date,
+    events: dayEvents,
+  }));
+}
+
+/** Formats a Date as "YYYY-MM-DD" using Europe/London wall-clock date, regardless of build-machine timezone. */
+function formatLondonDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 /**
