@@ -113,7 +113,7 @@ async function main() {
       console.log("  (no events found)");
       continue;
     }
-    for (var i = 0; i < Math.min(5, result.events.length); i++) {
+    for (var i = 0; i < Math.min(1, result.events.length); i++) {
       printEvent(result.events[i], "    ");
     }
   }
