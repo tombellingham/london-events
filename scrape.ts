@@ -33,6 +33,7 @@ interface DateGroup {
 }
 
 interface BuildOutput {
+  scrapedAt: string;
   scrapers: ScraperStatus[];
   dates: DateGroup[];
 }
@@ -115,6 +116,7 @@ async function main() {
   });
 
   const output: BuildOutput = {
+    scrapedAt: new Date().toISOString(),
     scrapers: scraperStatuses,
     dates,
   };

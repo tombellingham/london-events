@@ -1,0 +1,114 @@
+---
+title: London Talks & Lectures
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 640px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      line-height: 1.5;
+      color: #111;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 0;
+    }
+    .scraper-status {
+      color: #666;
+      font-size: 0.8rem;
+      margin: 0.35rem 0 0;
+    }
+    .scraper-status__item {
+      font-size
+      font-weight: 300;
+      border-radius: 6px;
+      padding: 2px 8px;
+      margin: 2px 2px;
+      width: fit-content;
+      display: inline-block;
+      font-size: 12px;
+    }
+    .scraper-status__item--ok {
+      color: white;
+      background: #1a7f37;
+    }
+    .scraper-status__item--fail {
+      color: white;
+      background: #cf222e;
+    }
+    h2.day-heading {
+      font-size: 1.1rem;
+      margin-top: 2.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid #ddd;
+    }
+    .event {
+      margin: 1.25rem 0;
+    }
+    .event__title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .event__title a {
+      color: #0645ad;
+      text-decoration: none;
+    }
+    .event__title a:hover {
+      text-decoration: underline;
+    }
+    .event__meta {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 0.15rem;
+    }
+    .event__description {
+      font-size: 0.92rem;
+      color: #333;
+      margin: 0.35rem 0 0;
+    }
+    .empty {
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{ title }}</h1>
+  <p class="subtitle">
+    {% if eventDates.lastScrapedLabel %}Last scraped on {{ eventDates.lastScrapedLabel }}{% else %}Not yet scraped{% endif %}
+    · next 4 weeks
+  </p>
+  <p class="scraper-status">
+    {% for scraper in eventDates.scrapers %}<div class="scraper-status__item {{ 'scraper-status__item--ok' if scraper.success else 'scraper-status__item--fail' }}">{{ scraper.name }}{% if scraper.success %}: {{ scraper.eventCount }}{% endif %}</div>{% endfor %}
+  </p>
+
+  {% if eventDates.dates.length == 0 %}
+    <p class="empty">No events found. Have you run <code>npm run scrape</code>?</p>
+  {% endif %}
+
+  {% for day in eventDates.dates %}
+    <h2 class="day-heading">{{ day.label }}</h2>
+    {% for event in day.events %}
+      <div class="event">
+        <div class="event__title">
+          <a href="{{ event.url }}">{{ event.title }}</a>
+        </div>
+        <div class="event__meta">{{ event.displayTime }} · {{ event.source }}</div>
+        <p class="event__description">{{ event.description }}</p>
+      </div>
+    {% endfor %}
+  {% endfor %}
+</body>
+</html>
