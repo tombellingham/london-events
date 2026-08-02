@@ -92,5 +92,9 @@ export default async function () {
     ? formatScrapedAtLabel(raw.scrapedAt)
     : null;
 
-  return { dates, scrapers: raw.scrapers ?? [], lastScrapedLabel };
+  const scrapers = (raw.scrapers ?? []).slice().sort((a, b) =>
+    (b.eventCount ?? 0) - (a.eventCount ?? 0)
+  );
+
+  return { dates, scrapers, lastScrapedLabel };
 }

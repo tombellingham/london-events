@@ -88,7 +88,6 @@ title: London Talks & Lectures
   <h1>{{ title }}</h1>
   <p class="subtitle">
     {% if eventDates.lastScrapedLabel %}Last scraped on {{ eventDates.lastScrapedLabel }}{% else %}Not yet scraped{% endif %}
-    · next 4 weeks
   </p>
   <p class="scraper-status">
     {% for scraper in eventDates.scrapers %}<div class="scraper-status__item {{ 'scraper-status__item--ok' if scraper.success else 'scraper-status__item--fail' }}">{{ scraper.name }}{% if scraper.success %}: {{ scraper.eventCount }}{% endif %}</div>{% endfor %}
