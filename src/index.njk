@@ -48,6 +48,10 @@ title: London Talks & Lectures
       color: white;
       background: #cf222e;
     }
+    .scraper-status__item--no-events {
+      color: white;
+      background: #c7883a;
+    }
     h2.day-heading {
       font-size: 1.1rem;
       margin-top: 2.5rem;
@@ -90,7 +94,18 @@ title: London Talks & Lectures
     {% if eventDates.lastScrapedLabel %}Last scraped on {{ eventDates.lastScrapedLabel }}{% else %}Not yet scraped{% endif %}
   </p>
   <p class="scraper-status">
-    {% for scraper in eventDates.scrapers %}<div class="scraper-status__item {{ 'scraper-status__item--ok' if scraper.success else 'scraper-status__item--fail' }}">{{ scraper.name }}{% if scraper.success %}: {{ scraper.eventCount }}{% endif %}</div>{% endfor %}
+    {% for scraper in eventDates.scrapers %}
+      {% if scraper.success %}
+        {% if scraper.eventCount == 0 %}
+          {% set statusClass = 'scraper-status__item--no-events' %}
+        {% else %}
+          {% set statusClass = 'scraper-status__item--ok' %}
+        {% endif %}
+      {% else %}
+        {% set statusClass = 'scraper-status__item--fail' %}
+      {% endif %}
+      <div class="scraper-status__item {{ statusClass }}">{{ scraper.name }}{% if scraper.success %}: {{ scraper.eventCount }}{% endif %}</div>
+    {% endfor %}
   </p>
 
   {% if eventDates.dates.length == 0 %}
