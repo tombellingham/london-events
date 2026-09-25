@@ -1,3 +1,8 @@
-node_modules/*
-.build/*
-_site/*
+node_modules/
+.build/
+_site/
+.cache/
+.e2e/
+probe-out/
+test-results/
+playwright-report/

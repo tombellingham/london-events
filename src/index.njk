@@ -1,128 +1,112 @@
 ---
-title: London Talks & Lectures
+permalink: index.html
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title }}</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 640px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      line-height: 1.5;
-      color: #111;
-    }
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 0.25rem;
-    }
-    .subtitle {
-      color: #666;
-      font-size: 0.9rem;
-      margin-top: 0;
-    }
-    .scraper-status {
-      color: #666;
-      font-size: 0.8rem;
-      margin: 0.35rem 0 0;
-    }
-    .scraper-status__item {
-      font-size
-      font-weight: 300;
-      border-radius: 6px;
-      padding: 2px 8px;
-      margin: 2px 2px;
-      width: fit-content;
-      display: inline-block;
-      font-size: 12px;
-    }
-    .scraper-status__item--ok {
-      color: white;
-      background: #1a7f37;
-    }
-    .scraper-status__item--fail {
-      color: white;
-      background: #cf222e;
-    }
-    .scraper-status__item--no-events {
-      color: white;
-      background: #c7883a;
-    }
-    h2.day-heading {
-      font-size: 1.1rem;
-      margin-top: 2.5rem;
-      padding-bottom: 0.25rem;
-      border-bottom: 1px solid #ddd;
-    }
-    .event {
-      margin: 1.25rem 0;
-    }
-    .event__title {
-      font-weight: 600;
-      font-size: 1rem;
-    }
-    .event__title a {
-      color: #0645ad;
-      text-decoration: none;
-    }
-    .event__title a:hover {
-      text-decoration: underline;
-    }
-    .event__meta {
-      font-size: 0.85rem;
-      color: #666;
-      margin-top: 0.15rem;
-    }
-    .event__description {
-      font-size: 0.92rem;
-      color: #333;
-      margin: 0.35rem 0 0;
-    }
-    .empty {
-      color: #666;
-      font-style: italic;
-    }
-  </style>
+  <title>London Talks · lectures, debates &amp; talks across London</title>
+  <meta name="description" content="Talks, lectures and debates at {{ site.totals.sources }} London institutions, gathered daily. Filter by day, price, format and venue.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' font-weight='700' text-anchor='middle' fill='%23fff'%3ET%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-  <h1>{{ title }}</h1>
-  <p class="subtitle">
-    {% if eventDates.lastScrapedLabel %}Last scraped on {{ eventDates.lastScrapedLabel }}{% else %}Not yet scraped{% endif %}
-  </p>
-  <p class="scraper-status">
-    {% for scraper in eventDates.scrapers %}
-      {% if scraper.success %}
-        {% if scraper.eventCount == 0 %}
-          {% set statusClass = 'scraper-status__item--no-events' %}
-        {% else %}
-          {% set statusClass = 'scraper-status__item--ok' %}
-        {% endif %}
-      {% else %}
-        {% set statusClass = 'scraper-status__item--fail' %}
-      {% endif %}
-      <div class="scraper-status__item {{ statusClass }}">{{ scraper.name }}{% if scraper.success %}: {{ scraper.eventCount }}{% endif %}</div>
-    {% endfor %}
-  </p>
+  <div class="page">
+    <header class="masthead">
+      <a class="wordmark" href="./"><span class="wordmark__cut">L</span>ONDON TALKS</a>
+      <nav class="masthead__nav" aria-label="Page">
+        <a href="#sources">Sources</a>
+        <a href="#health">Status</a>
+      </nav>
+    </header>
 
-  {% if eventDates.dates.length == 0 %}
-    <p class="empty">No events found. Have you run <code>npm run scrape</code>?</p>
-  {% endif %}
+    <section class="intro">
+      <h1>Talks &amp; lectures in London</h1>
+      <p class="lede">
+        {{ site.eventCount }} upcoming talks, lectures and debates from {{ site.totals.sources }} institutions, gathered every morning.
+      </p>
+      <p class="health-line" id="health-summary">
+        {% if site.generatedLabel %}<span>Updated {{ site.generatedLabel }}</span><span class="sep">·</span>{% endif %}
+        <a href="#health" class="health-pill health-pill--ok" title="Sources that returned events on the last run"><span class="dot dot--ok"></span>{{ site.totals.ok }} ok</a>
+        {% if site.totals.empty %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--empty" title="Sources that ran without errors but returned nothing (usually a sign the site changed)"><span class="dot dot--empty"></span>{{ site.totals.empty }} empty</a>{% endif %}
+        {% if site.totals.failed %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--error" title="{% for s in site.failedSources %}{{ s.name }}: {{ s.errorShort }}&#10;{% endfor %}"><span class="dot dot--error"></span>{{ site.totals.failed }} failed</a>{% endif %}
+        <span class="sep">·</span><span id="history-spark" class="spark" aria-hidden="true"></span>
+      </p>
+    </section>
 
-  {% for day in eventDates.dates %}
-    <h2 class="day-heading">{{ day.label }}</h2>
-    {% for event in day.events %}
-      <div class="event">
-        <div class="event__title">
-          <a href="{{ event.url }}">{{ event.title }}</a>
+    <section class="filters" aria-label="Filters">
+      <div class="filter" role="group" aria-labelledby="when-label">
+        <h2 class="label" id="when-label">When</h2>
+        <div class="choices" data-filter="when">
+          <button type="button" data-value="today">Today</button><span class="sep">·</span><button type="button" data-value="tomorrow">Tomorrow</button><span class="sep">·</span><button type="button" data-value="week">Next 7 days</button><span class="sep">·</span><button type="button" data-value="month">Next 30 days</button>
         </div>
-        <div class="event__meta">{{ event.displayTime }} · {{ event.source }}</div>
-        <p class="event__description">{{ event.description }}</p>
       </div>
-    {% endfor %}
-  {% endfor %}
+      <div class="filter" role="group" aria-labelledby="price-label">
+        <h2 class="label" id="price-label">Price</h2>
+        <div class="choices" data-filter="price">
+          <button type="button" data-value="any">Any</button><span class="sep">·</span><button type="button" data-value="free">Free</button><span class="sep">·</span><button type="button" data-value="paid">Paid</button>
+        </div>
+      </div>
+      <div class="filter" role="group" aria-labelledby="format-label">
+        <h2 class="label" id="format-label">Format</h2>
+        <div class="choices" data-filter="format">
+          <button type="button" data-value="any">Any</button><span class="sep">·</span><button type="button" data-value="in-person">In person</button><span class="sep">·</span><button type="button" data-value="online">Online</button>
+        </div>
+      </div>
+      <div class="filter filter--search">
+        <label class="label" for="search">Search</label>
+        <input id="search" type="search" placeholder="Title, speaker, venue…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="filter filter--sources" id="sources">
+        <h2 class="label">Sources <span class="label__aside" id="sources-count"></span></h2>
+        <details class="source-picker" id="source-picker" open>
+          <summary>Choose sources</summary>
+          <div class="source-actions"><button type="button" data-sources="all">All</button><span class="sep">·</span><button type="button" data-sources="none">None</button></div>
+          <ul class="source-list" id="source-list">
+            {% for s in site.sources %}<li><label class="source source--{{ s.status }}"><input type="checkbox" value="{{ s.id }}" checked><span class="source__name">{{ s.name }}</span></label></li>
+            {% endfor %}
+          </ul>
+        </details>
+      </div>
+    </section>
+
+    <main id="main">
+      <p class="result-count" id="result-count" aria-live="polite"></p>
+      <div id="events" class="events">
+        <noscript><p class="empty">This page filters events in your browser and needs JavaScript. The raw data is at <a href="data/events.json">data/events.json</a>.</p></noscript>
+      </div>
+    </main>
+
+    <section class="health" id="health" aria-labelledby="health-title">
+      <h2 class="section-title" id="health-title">Status</h2>
+      <p class="health__intro">Each source is scraped once a day. <strong>Empty</strong> means the scraper ran but found nothing, which usually means the site changed; <strong>failed</strong> means it errored or was blocked. Bars show events found on recent runs.</p>
+      <table class="health-table">
+        <thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col" class="num" title="Upcoming London events listed here after filtering and de-duplication">Events</th><th scope="col" class="num" title="Everything the scraper found, before filtering">Found</th><th scope="col">Recent runs</th></tr></thead>
+        <tbody>
+          {% for s in site.sources %}
+          <tr class="health-row health-row--{{ s.status }}" data-source="{{ s.id }}">
+            <th scope="row"><a href="{{ s.homepage }}" rel="noopener">{{ s.name }}</a></th>
+            <td><span class="dot dot--{{ s.status }}"></span>{% if s.status == "ok" %}ok{% elif s.status == "empty" %}empty{% elif s.status == "error" %}failed{% else %}—{% endif %}{% if s.error %}<span class="health-row__error" title="{{ s.error }}">{{ s.errorShort }}</span>{% endif %}</td>
+            <td class="num">{{ s.count }}</td>
+            <td class="num">{{ s.scraped }}</td>
+            <td class="runs" data-runs="{{ s.id }}"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="colophon">
+      <p>Built from each institution's public listings; always check the event page before you go. Data: <a href="data/events.json">events.json</a> · <a href="data/health.json">health.json</a> · <a href="data/history.json">history.json</a>.</p>
+    </footer>
+  </div>
+
+  <script id="events-data" type="application/json">{{ site.payloadJson | safe }}</script>
+  <script src="assets/app.js"></script>
 </body>
 </html>
