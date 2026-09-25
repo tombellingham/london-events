@@ -201,7 +201,7 @@ export function inferYear(month: number, day: number, now: Date = new Date()): n
 export function parseDate(text: string, now: Date = new Date()): string | null {
   const s = text.replace(/ /g, " ");
 
-  let m = s.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  let m = s.match(/\b(\d{4})-(\d{2})-(\d{2})(?!\d)/);
   if (m && isValidDate(+m[1], +m[2], +m[3])) return `${m[1]}-${m[2]}-${m[3]}`;
 
   // Day ranges inside one month ("12–15 July 2027", "28-29 Sept"): the start is the first day.
@@ -254,7 +254,9 @@ const TIME_RE = new RegExp(
     // 7pm · 7.30pm · 7:30 p.m. · 11 am   (never prices like £7.50)
     String.raw`(?<![£$€\d.,:])\b(1[0-2]|0?[1-9])(?:[:.]([0-5]\d))?\s*([ap])\.?\s?m\b\.?`,
     // 19:30 · 18.45 · 07:00   (not £12.50, 3.5 hours, 10.5%)
-    String.raw`(?<![£$€\d.,:])\b([01]\d|2[0-3]|\d)[:.]([0-5]\d)\b(?![.:,]?\d)(?!\s*(?:%|per\s*cent|hours?|hrs?|mins?|minutes?|km|miles?|million|bn|[mk]\b))`,
+    String.raw`(?<![£$€\d.,:])\b([01]\d|2[0-3]|\d)[:.]([0-5]\d)(?::[0-5]\d)?\b(?![.:,]?\d)(?!\s*(?:%|per\s*cent|hours?|hrs?|mins?|minutes?|km|miles?|million|bn|[mk]\b))`,
+    // A bare hour opening a range that ends with am/pm: the "11" of "11-1pm", the "6" of "6 – 8pm".
+    String.raw`(?<![£$€\d.,:])\b(1[0-2]|0?[1-9])(?=\s*(?:-|–|—|to|until)\s*(?:1[0-2]|0?[1-9])(?:[:.][0-5]\d)?\s*[ap]\.?\s?m\b)`,
   ].join("|"),
   "gi",
 );
@@ -270,8 +272,10 @@ function tokenizeTimes(text: string): TimeToken[] {
     } else if (m[2]) {
       const meridiem = m[4].toLowerCase() === "a" ? "am" : "pm";
       tokens.push({ index, end, hour: +m[2], minute: m[3] ? +m[3] : 0, meridiem, zeroPadded: false });
-    } else {
+    } else if (m[5]) {
       tokens.push({ index, end, hour: +m[5], minute: +m[6], meridiem: null, zeroPadded: m[5].length === 2 && m[5].startsWith("0") });
+    } else {
+      tokens.push({ index, end, hour: +m[7], minute: 0, meridiem: null, zeroPadded: false });
     }
   }
   return tokens;
@@ -319,7 +323,7 @@ export function parseDateTime(text: string, now: Date = new Date()): LondonDateT
   if (!date) return null;
   // Don't let the day-of-month ("28 Sep") be mistaken for a time: strip the date portion first.
   const withoutDates = text
-    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, " ")
+    .replace(/\b\d{4}-\d{2}-\d{2}(?:T(?=\d))?/g, " ")
     .replace(/\b\d{1,2}[/.]\d{1,2}[/.]\d{2,4}\b/g, " ");
   return { date, time: parseTime(withoutDates) };
 }

@@ -2,8 +2,10 @@ name: Scrape and deploy
 
 on:
   schedule:
-    - cron: "0 4 * * *" # Daily at 04:00 UTC
-  workflow_dispatch: # lets you trigger a manual run from the Actions tab
+    - cron: "17 4 * * *" # daily, 04:17 UTC (off the hour: on-the-hour cron runs are often delayed)
+  push:
+    branches: [master]
+  workflow_dispatch: # manual run from the Actions tab
 
 permissions:
   contents: read
@@ -11,12 +13,13 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,29 +27,52 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright's Chromium
-        # Only pintsofknowledge.ts needs a real browser (Ticket Tailor
-        # blocks plain fetch requests) — every other adapter just uses
-        # fetch() + cheerio, so only chromium is installed here, not the
-        # full Playwright browser suite, to keep this step faster.
+      - name: Typecheck and unit tests
+        run: npm run typecheck && npm test
+
+      - name: Install Chromium
+        # About a third of the sources need a real browser (client-rendered
+        # listings or JavaScript bot checks).
         run: npx playwright install --with-deps chromium
 
-      - name: Scrape events
-        run: npm run scrape
+      - name: Scrape
+        # Headed Chromium on a virtual display: several Cloudflare setups
+        # only let a headed browser through. Also fetches the previous run
+        # history from the live site so the health sparklines keep going.
+        run: xvfb-run -a npm run scrape
+        env:
+          BROWSER_HEADED: "1"
+          BROWSER_PAGES: "6"
+
+      - name: Validate scrape output
+        # Structural problems or a collapse in the numbers stop the deploy,
+        # so the live site keeps yesterday's data instead.
+        run: npm run validate
 
       - name: Build site
         run: npm run site:build
 
+      - name: Browser tests
+        run: npx playwright test
+
+      - name: Keep the raw scrape output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrape-output
+          path: .build
+          retention-days: 14
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload build artifact
+      - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./_site

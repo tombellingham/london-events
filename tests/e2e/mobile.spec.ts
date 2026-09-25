@@ -1,0 +1,13 @@
+import { expect, test } from "@playwright/test";
+import { NOW } from "./fixture.ts";
+
+test("works on a phone without sideways scrolling", async ({ page }) => {
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await page.clock.setFixedTime(NOW);
+  await page.goto("/");
+  await expect(page.locator("#result-count")).toHaveText("5 events in the next 7 days");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.getByRole("button", { name: "Tomorrow" }).tap();
+  await expect(page.locator(".event")).toHaveCount(2);
+});

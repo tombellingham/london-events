@@ -14,9 +14,12 @@ import type { RawEvent, Source } from "../core/types.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, honorificNames } from "../core/text.ts";
 import { parseNaiveLondon } from "../core/dates.ts";
-import { fetchHtml } from "../core/fetch.ts";
+import { fetchHtml, preferBrowser } from "../core/fetch.ts";
 
 const SITE = "https://www.rsm.ac.uk";
+
+// Plain requests from CI always meet a bot wall here.
+preferBrowser("www.rsm.ac.uk");
 
 export const rsm: Source = {
   id: "rsm",

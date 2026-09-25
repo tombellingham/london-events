@@ -11,14 +11,17 @@
  * Event series pages ("Searching for wellness, 20 Sep - 26 Nov") are skipped.
  */
 
-import type { LondonDateTime, RawEvent, Source } from "../core/types.ts";
+import type { LondonDateTime, RawEvent, ScrapeContext, Source } from "../core/types.ts";
 import { loadHtml, type CheerioAPI } from "../core/html.ts";
 import { clean, cleanName, looksLikeName, speakersFromTitle, uniqNames } from "../core/text.ts";
 import { parseDate, parseTime } from "../core/dates.ts";
 import { enrichAll } from "../core/async.ts";
-import { fetchHtml } from "../core/fetch.ts";
+import { fetchHtml, preferBrowser } from "../core/fetch.ts";
 
 const SITE = "https://www.thebritishacademy.ac.uk";
+
+// Plain requests from CI always meet a bot wall here.
+preferBrowser("www.thebritishacademy.ac.uk");
 
 type Listed = RawEvent & { start: LondonDateTime };
 
@@ -43,38 +46,95 @@ function speakers($: CheerioAPI): string[] {
   return names;
 }
 
+/** The rendered /events/ list (Vue, so browser only). */
+async function listingFromPage(ctx: ScrapeContext): Promise<Listed[]> {
+  const $ = loadHtml(await ctx.browser.html(`${SITE}/events/`, { waitFor: "#filtered-list h3 a", settleMs: 1500 }));
+  const listed: Listed[] = [];
+  $("#filtered-list h3 a").each((_, a) => {
+    const link = $(a);
+    const card = link.closest(".flex-col");
+    const event = listingEntry({
+      url: link.attr("href") ?? "",
+      title: clean(link.text()),
+      label: clean(card.find("p.uppercase").first().text()),
+      when: clean(card.find("p.text-cta").first().text()),
+    });
+    if (event) listed.push(event);
+  });
+  return listed;
+}
+
+type Json = Record<string, unknown>;
+
+/** Best-effort read of one /api/v2/filter/events/ item (a Wagtail page with display fields). */
+function apiEntry(item: Json): Listed | null {
+  const str = (v: unknown) => (typeof v === "string" ? clean(v) : "");
+  const meta = (item.meta ?? {}) as Json;
+  const url = str(item.url) || str(item.full_url) || str(meta.html_url) || str(item.link);
+  const title = str(item.title);
+  const dateKey = Object.keys(item).find((k) => /date|when|time/i.test(k) && typeof item[k] === "string" && parseDate(item[k] as string));
+  const placeKey = Object.keys(item).find((k) => /location|city|venue|place/i.test(k) && typeof item[k] === "string");
+  const labelParts = Object.keys(item)
+    .filter((k) => /type|label|category|free|price/i.test(k))
+    .map((k) => (typeof item[k] === "boolean" ? (item[k] ? "Free" : "") : str(item[k])));
+  const when = [dateKey ? str(item[dateKey]) : "", placeKey ? str(item[placeKey]) : ""].filter(Boolean).join(", ");
+  return listingEntry({ url, title, label: labelParts.join(" ") || "Event", when });
+}
+
+async function listingFromApi(ctx: ScrapeContext): Promise<Listed[]> {
+  return ctx.browser.inPage(`${SITE}/`, async (get) => {
+    const listed: Listed[] = [];
+    for (let page = 1; page <= 5; page++) {
+      const data = JSON.parse(await get(`/api/v2/filter/events/?fields=*&page=${page}&results=12`)) as Json;
+      const items = (Array.isArray(data.items) ? data.items : Array.isArray(data.results) ? data.results : []) as Json[];
+      if (!items.length) break;
+      const before = listed.length;
+      for (const item of items) {
+        const event = apiEntry(item);
+        if (event) listed.push(event);
+      }
+      if (listed.length === before) throw new Error(`listing API items not understood: ${JSON.stringify(items[0]).slice(0, 200)}`);
+      if (listed.slice(before).every((e) => ctx.isBeyondHorizon(e.start))) break;
+    }
+    return listed;
+  });
+}
+
+/** Card fields → event. Unlabelled cards are event series ("Searching for wellness, 20 Sep - 26 Nov"). */
+function listingEntry(card: { url: string; title: string; label: string; when: string }): Listed | null {
+  if (!card.url || !card.title || !card.label) return null;
+  const [when, ...placeParts] = card.when.split(",");
+  const date = parseDate(when ?? "");
+  if (!date) return null;
+  const endText = (when ?? "").split(/\s+-\s+/)[1];
+  const end = endText ? parseDate(endText) : null;
+  return {
+    title: card.title,
+    url: new URL(card.url, SITE).toString(),
+    start: { date, time: null },
+    end: end ? { date: end, time: null } : null,
+    location: clean(placeParts.join(",")) || null,
+    free: /\bfree\b/i.test(card.label) ? true : undefined,
+    speakers: speakersFromTitle(card.title),
+    hints: [card.label],
+  };
+}
+
 export const britishAcademy: Source = {
   id: "british-academy",
   name: "The British Academy",
   homepage: `${SITE}/events/`,
   defaults: { free: true, location: "The British Academy, 10-11 Carlton House Terrace, SW1Y 5AH" },
   async scrape(ctx) {
-    // Rendered client-side: plain HTML has an empty list, so go straight to the browser.
-    const $ = loadHtml(await ctx.browser.html(`${SITE}/events/`, { waitFor: "#filtered-list h3 a", settleMs: 1500 }));
-    const listed: Listed[] = [];
-    $("#filtered-list h3 a").each((_, a) => {
-      const link = $(a);
-      const card = link.closest(".flex-col");
-      const label = clean(card.find("p.uppercase").first().text());
-      const url = link.attr("href");
-      const [when, ...placeParts] = clean(card.find("p.text-cta").first().text()).split(",");
-      if (!url || !label) return; // unlabelled cards are event series, not events
-      const date = parseDate(when);
-      if (!date) return;
-      const endText = when.split(/\s+-\s+/)[1];
-      const end = endText ? parseDate(endText) : null;
-      const title = clean(link.text());
-      listed.push({
-        title,
-        url: new URL(url, SITE).toString(),
-        start: { date, time: null },
-        end: end ? { date: end, time: null } : null,
-        location: clean(placeParts.join(",")) || null,
-        free: /\bfree\b/i.test(label) ? true : undefined,
-        speakers: speakersFromTitle(title),
-        hints: [label],
-      });
-    });
+    let listed: Listed[];
+    try {
+      listed = await listingFromPage(ctx);
+    } catch (err) {
+      // /events/ is intermittently challenged even for a real browser; the
+      // homepage usually isn't, and the listing's own API can be read from it.
+      ctx.log.warn(`events page unavailable (${String(err).slice(0, 120)}); trying the listing API`);
+      listed = await listingFromApi(ctx);
+    }
     if (!listed.length) throw new Error("no events found on the listing (layout change or blocked)");
 
     const inWindow = listed.filter((e) => ctx.inWindow(e.start));

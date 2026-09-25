@@ -18,6 +18,14 @@ import { errorMessage } from "./async.ts";
 
 const walledHosts = new Set<string>();
 
+/**
+ * Hosts that never answer plain requests from CI: skip straight to the
+ * browser. (Each doomed plain request also nudges a WAF towards suspicion.)
+ */
+export function preferBrowser(...hosts: string[]): void {
+  for (const host of hosts) walledHosts.add(host);
+}
+
 function isBlocked(err: unknown): err is HttpError {
   return err instanceof HttpError && err.blocked;
 }

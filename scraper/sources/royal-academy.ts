@@ -10,14 +10,17 @@
  */
 
 import type { LondonDateTime, RawEvent, Source } from "../core/types.ts";
-
-/** Listing entries always carry a London date (time filled in from the event page). */
-type Listed = RawEvent & { start: LondonDateTime };
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, speakersFromTitle } from "../core/text.ts";
 import { parseDate, parseDateTime } from "../core/dates.ts";
 import { enrichAll } from "../core/async.ts";
-import { fetchHtml, laterPage } from "../core/fetch.ts";
+import { fetchHtml, laterPage, preferBrowser } from "../core/fetch.ts";
+
+/** Listing entries always carry a London date (time filled in from the event page). */
+type Listed = RawEvent & { start: LondonDateTime };
+
+// Plain requests from CI always meet a bot wall here.
+preferBrowser("www.royalacademy.org.uk");
 
 const SITE = "https://www.royalacademy.org.uk";
 const LISTING = `${SITE}/exhibitions-and-events?what-filter=talks-lectures`;

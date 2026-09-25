@@ -1,73 +1,65 @@
 /**
  * School of Advanced Study (University of London) — the events page is a
- * Drupal "filter listing" whose results come from a JSON endpoint,
- * /api/listing/15886 (12 per page, soonest first, ?page=N). The page and
- * the endpoint sit behind Cloudflare: the endpoint is only reachable from
- * inside a real browser that has loaded the page, so it's fetched in-page.
+ * Drupal "filter listing" fed by /api/listing/15886 (12 per page, ?page=N
+ * from 0, soonest first), which returns
+ *   { items: [{ bundle: "event", markup: "<article>…teaser…</article>" }], meta: { count } }.
+ * Teasers carry the link, title, organising institute and start/end dates
+ * (date-only: the time part is a noon placeholder); the event page has the
+ * time, venue and description.
  *
- * The endpoint's items are read tolerantly (structured fields or rendered
- * teaser HTML), and every event page is then read for the details, since
- * teasers are brief.
+ * Everything sits behind Cloudflare and is only reachable from inside a real
+ * browser that has loaded the events page, so the API and the event pages
+ * are all fetched in-page (BrowserPool.inPage) rather than page by page.
  */
 
 import type { LondonDateTime, RawEvent, Source } from "../core/types.ts";
-import { absUrl, hasType, jsonLdNodes, loadHtml } from "../core/html.ts";
-import { clean, honorificNames, htmlToText, speakersFromTitle } from "../core/text.ts";
-import { parseDateTime, parseIsoInstant, parseNaiveLondon, toLondonDateTime } from "../core/dates.ts";
-import { enrichAll } from "../core/async.ts";
-import { fetchHtml } from "../core/fetch.ts";
+import { absUrl, hasType, jsonLdNodes, labelledValue, loadHtml } from "../core/html.ts";
+import { clean, honorificNames, htmlToLines, labelled, speakersFromTitle } from "../core/text.ts";
+import { parseDateTime, parseNaiveLondon, parseTime } from "../core/dates.ts";
+import { mapLimit } from "../core/async.ts";
 
 const SITE = "https://www.sas.ac.uk";
 const PAGE_URL = `${SITE}/news-events/events`;
+const PER_PAGE = 12;
 const API = (page: number) =>
   `${SITE}/api/listing/15886?sort%5Bstart_date%5D%5Bpath%5D=start_date&sort%5Bstart_date%5D%5Bdirection%5D=asc${page ? `&page=${page}` : ""}`;
+// Not public talks: calls for papers, training, courses, internal sessions.
+const NOT_EVENTS = /\b(?:call for (?:papers|proposals|applications)|cfp|research training|training|short course|course|workshop|reading group|induction|open day|deadline)\b/i;
 
-type Listed = RawEvent & { start: LondonDateTime };
-type Json = Record<string, unknown>;
+type Listed = RawEvent & { start: LondonDateTime; organiser: string };
 
-/** The first array of objects in a JSON document (breadth-first). */
-function findItems(root: unknown): Json[] {
-  const queue: unknown[] = [root];
-  while (queue.length) {
-    const node = queue.shift();
-    if (Array.isArray(node)) {
-      if (node.length && node.every((x) => x && typeof x === "object" && !Array.isArray(x))) return node as Json[];
-      queue.push(...node);
-    } else if (node && typeof node === "object") {
-      queue.push(...Object.values(node as Json));
-    }
-  }
-  return [];
+interface ListingResponse {
+  items?: Array<{ bundle?: string; markup?: string }>;
+  meta?: { count?: number };
 }
 
-function when(value: string): LondonDateTime | null {
-  const instant = parseIsoInstant(value);
-  if (instant) return toLondonDateTime(instant);
-  return parseNaiveLondon(value) ?? parseDateTime(value);
+/** A teaser from the listing API → event (date only; the time comes from the event page). */
+export function sasTeaser(markup: string): Listed | null {
+  const $ = loadHtml(markup);
+  const url = absUrl($("a[href]").first().attr("href"), SITE);
+  const title = clean($("h3").first().text());
+  const times = $("time[datetime]")
+    .map((_, t) => $(t).attr("datetime") ?? "")
+    .get();
+  const start = times[0] ? parseNaiveLondon(times[0].slice(0, 10)) : null;
+  const end = times[1] ? parseNaiveLondon(times[1].slice(0, 10)) : null;
+  if (!url || !title || !start) return null;
+  const organiser = clean($("h3").first().next().text());
+  return { title, url, start: { date: start.date, time: null }, end, organiser };
 }
 
-/** One listing item → event, from structured fields or from rendered teaser markup. */
-export function sasItem(item: Json): Listed | null {
-  const html = Object.values(item).find((v) => typeof v === "string" && /<a\s[^>]*href=/i.test(v)) as string | undefined;
-  if (html) {
-    const $ = loadHtml(html);
-    const link = $("a[href]").filter((_, a) => /\/events?\//.test($(a).attr("href") ?? "")).first();
-    const url = absUrl((link.length ? link : $("a[href]").first()).attr("href"), SITE);
-    const title = clean($("h2, h3, h4, .title, [class*=title]").first().text()) || clean(link.text());
-    const stamp = $("time[datetime]").first().attr("datetime");
-    const start = (stamp ? when(stamp) : null) ?? parseDateTime(clean($.root().text()));
-    if (!url || !title || !start) return null;
-    return { title, url, start, description: clean($("p").first().text()) || null };
-  }
-  const str = (...keys: string[]) => {
-    for (const k of keys) if (typeof item[k] === "string" && item[k]) return item[k] as string;
-    return "";
-  };
-  const title = htmlToText(str("title", "name", "label"));
-  const url = absUrl(str("url", "path", "link", "alias"), SITE);
-  const start = when(str("start_date", "startDate", "date", "start", "event_start_date"));
-  if (!title || !url || !start) return null;
-  return { title, url, start, location: htmlToText(str("location", "venue")) || null, description: htmlToText(str("summary", "teaser", "description")) || null };
+/** Time, venue and description from an event page ("Label: value" lines or <dt>/<dd>-style fields). */
+export function sasDetails(html: string): { time: string | null; location: string | null; description: string | null; text: string; type: string } {
+  const $ = loadHtml(html);
+  const node = jsonLdNodes($).find((n) => hasType(n, /Event/));
+  const main = $("main").first();
+  const lines = htmlToLines(main.html() ?? "");
+  const field = (label: RegExp, inline: RegExp) => labelledValue($, label, main) ?? labelled(lines, inline);
+  const start = typeof node?.startDate === "string" ? parseNaiveLondon(node.startDate.replace(/([zZ]|[+-]\d{2}:?\d{2})$/, "")) : null;
+  const time = start?.time ?? parseTime(field(/^(?:time|start time|times?)$/i, /time/i) ?? "") ?? parseDateTime(field(/^(?:date|dates|date and time|date & time|when)$/i, /date/i) ?? "")?.time ?? null;
+  const location = field(/^(?:venue|location|where|address)$/i, /(?:venue|location|where)/i);
+  const description = clean($('meta[name="description"]').attr("content") ?? "") || null;
+  return { time, location: location ? clean(location) : null, description, text: lines.join("\n"), type: field(/^(?:event type|type)$/i, /event type/i) ?? "" };
 }
 
 export const sas: Source = {
@@ -75,62 +67,50 @@ export const sas: Source = {
   name: "School of Advanced Study",
   homepage: PAGE_URL,
   defaults: { free: true, location: "Senate House, Malet Street, WC1E 7HU" },
+  timeoutMs: 360_000,
   async scrape(ctx) {
-    const listed: Listed[] = [];
-    const seen = new Set<string>();
-    for (let batch = 0; batch < 4; batch++) {
-      // Five API pages per page load (60 events), until we pass the horizon.
-      const pages = [0, 1, 2, 3, 4].map((i) => API(batch * 5 + i));
-      const bodies = await ctx.browser.fetchFromPage(PAGE_URL, pages).catch((err) => {
-        if (batch === 0) throw err;
-        ctx.log.warn(`stopped paginating: ${String(err).slice(0, 200)}`);
-        return [] as string[];
-      });
-      let more = false;
-      for (const body of bodies) {
-        let json: unknown;
-        try {
-          json = JSON.parse(body);
-        } catch {
-          throw new Error(`listing endpoint did not return JSON: ${body.slice(0, 120)}`);
-        }
-        const items = findItems(json);
-        for (const item of items) {
-          const event = sasItem(item);
-          if (!event || seen.has(`${event.url}|${event.start.date}`)) continue;
-          seen.add(`${event.url}|${event.start.date}`);
+    return ctx.browser.inPage(PAGE_URL, async (get) => {
+      const listed: Listed[] = [];
+      const seen = new Set<string>();
+      let pages = 1;
+      for (let page = 0; page < Math.min(pages, 25); page++) {
+        const data = JSON.parse(await get(API(page))) as ListingResponse;
+        if (!Array.isArray(data.items)) throw new Error("listing API shape changed (no items array)");
+        pages = Math.ceil((data.meta?.count ?? 0) / PER_PAGE);
+        let beyond = 0;
+        for (const item of data.items) {
+          const event = item.markup ? sasTeaser(item.markup) : null;
+          if (!event) continue;
+          if (ctx.isBeyondHorizon(event.start)) beyond++;
+          const key = `${event.url}|${event.start.date}`;
+          if (seen.has(key) || NOT_EVENTS.test(event.title)) continue;
+          seen.add(key);
           listed.push(event);
         }
-        more = items.length > 0 && !items.map(sasItem).some((e) => e && ctx.isBeyondHorizon(e.start));
-        if (!more) break;
+        if (beyond === data.items.length) break;
       }
-      if (!more) break;
-    }
-    if (!listed.length) throw new Error("listing endpoint returned no recognisable events");
 
-    const inWindow = listed.filter((e) => ctx.inWindow(e.start));
-    return enrichAll<RawEvent>(
-      ctx,
-      inWindow,
-      2,
-      async (event) => {
-        const $ = loadHtml(await fetchHtml(ctx, event.url));
-        const node = jsonLdNodes($).find((n) => hasType(n, /Event/));
-        const text = clean($("main").text());
-        const venue = clean($("[class*=location], [class*=venue]").first().text());
-        const description = clean($('meta[name="description"]').attr("content") ?? "") || event.description;
-        const start = typeof node?.startDate === "string" ? when(node.startDate) : null;
-        const time = start?.time ?? parseDateTime(clean($("[class*=date], time").first().text()))?.time ?? null;
-        return {
-          ...event,
-          start: { date: (event.start as LondonDateTime).date, time: (event.start as LondonDateTime).time ?? time },
-          location: venue || event.location,
-          description,
-          speakers: [...speakersFromTitle(event.title), ...honorificNames(description)],
-          hints: [text.slice(0, 3000)],
-        };
-      },
-      (e) => e.url,
-    );
+      const inWindow = listed.filter((e) => ctx.inWindow(e.start));
+      let failures = 0;
+      const detailed = await mapLimit(inWindow, 4, async (event): Promise<RawEvent | null> => {
+        const base: RawEvent = { ...event, hints: [event.organiser], speakers: speakersFromTitle(event.title) };
+        try {
+          const d = sasDetails(await get(event.url));
+          if (NOT_EVENTS.test(d.type)) return null;
+          return {
+            ...base,
+            start: { date: event.start.date, time: d.time },
+            location: d.location,
+            description: d.description,
+            speakers: [...(base.speakers ?? []), ...honorificNames(d.description)],
+            hints: [event.organiser, d.type, d.text.slice(0, 3000)],
+          };
+        } catch (err) {
+          if (++failures <= 3) ctx.log.warn(`details failed for ${event.url}: ${String(err).slice(0, 160)}`);
+          return base;
+        }
+      });
+      return detailed.filter((e): e is RawEvent => e !== null);
+    });
   },
 };

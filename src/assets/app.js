@@ -175,16 +175,41 @@
       .replace(/"/g, "&quot;");
   }
 
+  // Wraps matches of the (folded) search terms in <mark>, accent-insensitively:
+  // "elan" highlights "Élan". Matching runs on a folded copy of the text with
+  // an index map back to the original characters, which are escaped as usual.
   function highlight(text, qs) {
-    var safe = esc(text);
-    if (!qs.length) return safe;
-    // Highlight on the escaped text, matching accent-insensitively where possible.
+    text = String(text == null ? "" : text);
+    if (!qs.length) return esc(text);
+    var folded = "";
+    var map = [];
+    for (var i = 0; i < text.length; i++) {
+      var f = fold(text[i]);
+      for (var k = 0; k < f.length; k++) {
+        folded += f[k];
+        map.push(i);
+      }
+    }
+    var marks = [];
     qs.forEach(function (q) {
-      var pattern = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      if (pattern.length < 2) return;
-      safe = safe.replace(new RegExp("(" + pattern + ")(?![^<]*>)", "gi"), "<mark>$1</mark>");
+      if (q.length < 2) return;
+      for (var at = folded.indexOf(q); at >= 0; at = folded.indexOf(q, at + q.length)) {
+        marks.push([map[at], map[at + q.length - 1] + 1]);
+      }
     });
-    return safe;
+    if (!marks.length) return esc(text);
+    marks.sort(function (a, b) {
+      return a[0] - b[0];
+    });
+    var out = "";
+    var pos = 0;
+    marks.forEach(function (m) {
+      if (m[1] <= pos) return;
+      var start = Math.max(m[0], pos);
+      out += esc(text.slice(pos, start)) + "<mark>" + esc(text.slice(start, m[1])) + "</mark>";
+      pos = m[1];
+    });
+    return out + esc(text.slice(pos));
   }
 
   function sortWithinDay(a, b) {

@@ -13,10 +13,13 @@ import { absUrl, hasType, jsonLdNodes, loadHtml } from "../core/html.ts";
 import { clean, cleanName, htmlToText, looksLikeName, speakersFromTitle, uniqNames } from "../core/text.ts";
 import { parseDateTime, parseIsoInstant } from "../core/dates.ts";
 import { enrichAll } from "../core/async.ts";
-import { fetchHtml, laterPage } from "../core/fetch.ts";
+import { fetchHtml, laterPage, preferBrowser } from "../core/fetch.ts";
 
 const SITE = "https://www.tickettailor.com";
 const BOX_OFFICE = `${SITE}/events/pintsofknowledge`;
+
+// Plain requests from CI always meet a bot wall here.
+preferBrowser("www.tickettailor.com");
 
 type Listed = RawEvent & { start: LondonDateTime };
 

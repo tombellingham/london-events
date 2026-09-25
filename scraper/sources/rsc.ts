@@ -11,15 +11,15 @@
  */
 
 import type { LondonDateTime, RawEvent, Source } from "../core/types.ts";
-
-/** Listing entries always carry a London date (time filled in from the event page). */
-type Listed = RawEvent & { start: LondonDateTime };
 import { absUrl, hasType, jsonLdNodes, loadHtml } from "../core/html.ts";
 import { clean, honorificNames, speakersFromTitle } from "../core/text.ts";
 import { parseDate, parseNaiveLondon } from "../core/dates.ts";
 import { enrichAll } from "../core/async.ts";
 import { configureHost } from "../core/http.ts";
 import { fetchHtml, laterPage } from "../core/fetch.ts";
+
+/** Listing entries always carry a London date (time filled in from the event page). */
+type Listed = RawEvent & { start: LondonDateTime };
 
 const SITE = "https://www.rsc.org";
 const LISTING = `${SITE}/events/find-an-event/uk-and-ireland-events`;

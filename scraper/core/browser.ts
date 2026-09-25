@@ -83,11 +83,8 @@ export class BrowserPool {
     await this.context.addInitScript(() => {
       Object.defineProperty(navigator, "webdriver", { get: () => undefined });
     });
-    // Images, fonts and media are never needed for extraction.
-    await this.context.route("**/*", (route) => {
-      const type = route.request().resourceType();
-      return type === "image" || type === "media" || type === "font" ? route.abort() : route.continue();
-    });
+    // Deliberately no request interception (e.g. to skip images): routing
+    // changes how the browser fetches, and Cloudflare's checks notice.
     return this.context;
   }
 
@@ -156,26 +153,46 @@ export class BrowserPool {
   }
 
   /**
-   * Loads `pageUrl` (clearing any bot check and collecting cookies), then
-   * performs same-origin fetches from inside the page — how we read JSON APIs
-   * that sit behind the same protection as the HTML.
+   * Loads `pageUrl` (clearing any bot check and collecting its cookies), then
+   * hands `fn` a `get(url)` that fetches from inside that page — how we read
+   * JSON APIs and pages that sit behind the same protection as the HTML,
+   * without paying for a full page load each time. A request that meets a
+   * bot check is retried a few times while the page's own check completes.
    */
+  async inPage<T>(pageUrl: string, fn: (get: (url: string, init?: RequestInit) => Promise<string>) => Promise<T>, options: PageOptions = {}): Promise<T> {
+    return this.withPage(
+      pageUrl,
+      async (page) => {
+        const get = async (url: string, init?: RequestInit): Promise<string> => {
+          for (let attempt = 0; ; attempt++) {
+            this.requests++;
+            const result = await page.evaluate(
+              async ({ url, init }) => {
+                const res = await fetch(url, { credentials: "include", ...(init ?? {}) });
+                return { status: res.status, text: await res.text() };
+              },
+              { url: new URL(url, pageUrl).toString(), init },
+            );
+            if (result.status < 400) return result.text;
+            const wall = detectBotWall(result.status, result.text);
+            if (wall && attempt < 3) {
+              await page.waitForTimeout(3000 * (attempt + 1));
+              continue;
+            }
+            throw new HttpError(`HTTP ${result.status} for ${url} (in-page fetch${wall ? `, ${wall}` : ""})`, result.status, url, Boolean(wall));
+          }
+        };
+        return fn(get);
+      },
+      { settleMs: 2000, ...options },
+    );
+  }
+
+  /** inPage() for a fixed list of URLs. */
   async fetchFromPage(pageUrl: string, requests: Array<string | { url: string; init?: RequestInit }>): Promise<string[]> {
-    return this.withPage(pageUrl, async (page) => {
+    return this.inPage(pageUrl, async (get) => {
       const out: string[] = [];
-      for (const req of requests) {
-        const spec = typeof req === "string" ? { url: req, init: undefined } : req;
-        this.requests++;
-        const result = await page.evaluate(async ({ url, init }) => {
-          const res = await fetch(url, { credentials: "include", ...(init ?? {}) });
-          return { status: res.status, text: await res.text() };
-        }, spec);
-        if (result.status >= 400) {
-          const wall = detectBotWall(result.status, result.text);
-          throw new HttpError(`HTTP ${result.status} for ${spec.url} (in-page fetch${wall ? `, ${wall}` : ""})`, result.status, spec.url, Boolean(wall));
-        }
-        out.push(result.text);
-      }
+      for (const req of requests) out.push(typeof req === "string" ? await get(req) : await get(req.url, req.init));
       return out;
     });
   }

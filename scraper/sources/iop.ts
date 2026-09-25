@@ -15,9 +15,12 @@ import { clean, honorificNames, speakersFromTitle } from "../core/text.ts";
 import { parseDateTime } from "../core/dates.ts";
 import { enrichAll } from "../core/async.ts";
 import { isInLondon } from "../core/classify.ts";
-import { fetchHtml, laterPage } from "../core/fetch.ts";
+import { fetchHtml, laterPage, preferBrowser } from "../core/fetch.ts";
 
 const SITE = "https://www.iop.org";
+// Plain requests from CI always meet a bot wall here.
+preferBrowser("www.iop.org");
+
 const ADMIN = /\b(?:membership|professional registration|chartered|careers?|mentoring|annual general meeting|agm|cpd)\b/i;
 
 type Listed = RawEvent & { start: LondonDateTime; kind: string; skip?: boolean };
