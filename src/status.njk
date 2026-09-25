@@ -1,0 +1,65 @@
+---
+permalink: status/index.html
+root: "../"
+---
+{% extends "base.njk" %}
+
+{%- macro spark(bars, label) -%}
+<span class="spark" role="img" aria-label="{{ label }}">{% for b in bars %}<i class="{{ b.cls }}" style="height:{{ b.height }}%" title="{{ b.title }}"></i>{% endfor %}</span>
+{%- endmacro %}
+
+{% block title %}Status · London Talks{% endblock %}
+{% block description %}How the daily scrape of {{ site.totals.sources }} London institutions went: which sources worked, which failed, and recent history.{% endblock %}
+{% block nav %}<a href="../">Events</a><a href="#data">Raw data</a>{% endblock %}
+
+{% block content %}
+    <section class="intro">
+      <h1>Status</h1>
+      <p class="lede">Every source is scraped once a day. This page shows how the last run went and how each source has done recently.</p>
+      <p class="health-line health-line--summary" id="health-summary"{% if site.generatedAt %} data-generated-at="{{ site.generatedAt }}"{% endif %}>
+        {% if site.generatedLabel %}<span>Updated {{ site.generatedLabel }}</span>{% if site.run.duration %}<span class="sep">·</span><span>took {{ site.run.duration }}</span>{% endif %}<span class="sep">·</span>{% endif %}
+        <span class="health-pill health-pill--ok" title="Sources that returned events on the last run"><span class="dot dot--ok"></span>{{ site.totals.ok }} ok</span>
+        {% if site.totals.empty %}<span class="sep">·</span><span class="health-pill health-pill--empty" title="Sources that ran without errors but returned nothing (usually a sign the site changed)"><span class="dot dot--empty"></span>{{ site.totals.empty }} empty</span>{% endif %}
+        {% if site.totals.failed %}<span class="sep">·</span><span class="health-pill health-pill--error" title="{% for s in site.failedSources %}{{ s.name }}: {{ s.errorShort }}&#10;{% endfor %}"><span class="dot dot--error"></span>{{ site.totals.failed }} failed</span>{% endif %}
+        {% if site.run.bars.length %}<span class="sep">·</span><span id="history-spark" title="{{ site.run.sparkLabel }}">{{ spark(site.run.bars, site.run.sparkLabel) }}</span>{% endif %}
+      </p>
+      <p class="health__intro">{{ site.eventCount }} events listed{% if site.run.duplicatesRemoved %}, after merging {{ site.run.duplicatesRemoved }} duplicate{% if site.run.duplicatesRemoved != 1 %}s{% endif %} across sources{% endif %}. <strong>Empty</strong> means a scraper ran but found nothing, which usually means the site changed. <strong>Failed</strong> means it errored or was blocked; its events from the last good run (up to a week old) are listed instead. Bars show the events each source had listed on recent runs.</p>
+    </section>
+
+    <section class="health" id="health" aria-label="Sources">
+      <table class="health-table">
+        <thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col" class="num" title="Upcoming events listed from this source, after filtering and de-duplication">Events</th><th scope="col" class="num" title="Everything the scraper found, before filtering">Found</th><th scope="col" class="num took" title="How long the scraper took">Took</th><th scope="col" class="runs">Recent runs</th></tr></thead>
+        <tbody>
+          {% for s in site.sources %}
+          <tr class="health-row health-row--{{ s.status }}" data-source="{{ s.id }}">
+            <th scope="row"><a href="{{ s.homepage }}" rel="noopener">{{ s.name }}</a></th>
+            <td>
+              <span class="dot dot--{{ s.status }}"></span>{% if s.status == "ok" %}ok{% elif s.status == "empty" %}empty{% elif s.status == "error" %}failed{% else %}—{% endif %}
+              {%- if s.error %}<span class="health-row__error" title="{{ s.error }}">{{ s.errorShort }}</span>{% endif %}
+              {%- if s.carriedFrom %}<span class="health-row__carried">Listing its events from the last good run, {{ s.carriedFrom }}.</span>{% elif s.status == "error" and s.lastOkLabel %}<span class="health-row__carried">Last worked {{ s.lastOkLabel }}.</span>{% endif %}
+              {%- if s.warnings.length %}
+              <details class="health-row__warnings"><summary>{{ s.warnings.length }} warning{% if s.warnings.length != 1 %}s{% endif %}</summary><ul>{% for w in s.warnings %}<li>{{ w }}</li>{% endfor %}</ul></details>
+              {%- endif %}
+            </td>
+            <td class="num">{{ s.count }}</td>
+            <td class="num"{% if s.droppedLabel %} title="Dropped: {{ s.droppedLabel }}"{% endif %}>{{ s.scraped }}</td>
+            <td class="num took">{% if s.seconds !== null %}{{ s.seconds }}s{% endif %}</td>
+            <td class="runs">{% if s.bars.length %}{{ spark(s.bars, s.name ~ ": events listed on recent runs") }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="data" id="data" aria-labelledby="data-title">
+      <h2 class="section-title" id="data-title">Raw data</h2>
+      <ul class="data-files">
+        <li><a href="../data/events.json">events.json</a>: every listed event, as shipped to the events page.</li>
+        <li><a href="../data/health.json">health.json</a>: this run in detail, per source (counts, drop reasons with examples, warnings, timings).</li>
+        <li><a href="../data/history.json">history.json</a>: totals and per-source counts for the last 90 runs.</li>
+        <li><code>data/sources/&lt;id&gt;.json</code>: each source's last good scrape, which the next run falls back on if the source fails{% if site.sampleSnapshot %} (e.g. <a href="../data/sources/{{ site.sampleSnapshot }}.json">{{ site.sampleSnapshot }}.json</a>){% endif %}.</li>
+      </ul>
+    </section>
+{% endblock %}
+
+{% block footer %} <a href="../">Back to the events</a>.{% endblock %}

@@ -22,3 +22,14 @@ test("the real build renders and filters", async ({ page }) => {
   await expect(page.locator(".event").first()).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("the real status page lists every source", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (err) => errors.push(String(err)));
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await page.goto("/status/");
+  const data = JSON.parse(readFileSync("_site/data/events.json", "utf8")) as { sources: unknown[] };
+  await expect(page.locator(".health-row")).toHaveCount(data.sources.length);
+  await expect(page.locator("#health-summary")).toContainText("ok");
+  expect(errors).toEqual([]);
+});
