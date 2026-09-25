@@ -7,7 +7,7 @@ permalink: index.html
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>London Talks · lectures, debates &amp; talks across London</title>
-  <meta name="description" content="Talks, lectures and debates at {{ site.totals.sources }} London institutions, gathered daily. Filter by day, price, format and venue.">
+  <meta name="description" content="Talks, lectures and debates at {{ site.totals.sources }} London institutions, gathered daily. Filter by day, price and venue.">
   <meta name="color-scheme" content="light dark">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,13 +28,13 @@ permalink: index.html
     <section class="intro">
       <h1>Talks &amp; lectures in London</h1>
       <p class="lede">
-        {{ site.eventCount }} upcoming talks, lectures and debates from {{ site.totals.sources }} institutions, gathered every morning.
+        {{ site.eventCount }} upcoming in-person talks, lectures and debates from {{ site.totals.sources }} London institutions, gathered every morning.
       </p>
       <p class="health-line" id="health-summary">
         {% if site.generatedLabel %}<span>Updated {{ site.generatedLabel }}</span><span class="sep">·</span>{% endif %}
         <a href="#health" class="health-pill health-pill--ok" title="Sources that returned events on the last run"><span class="dot dot--ok"></span>{{ site.totals.ok }} ok</a>
         {% if site.totals.empty %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--empty" title="Sources that ran without errors but returned nothing (usually a sign the site changed)"><span class="dot dot--empty"></span>{{ site.totals.empty }} empty</a>{% endif %}
-        {% if site.totals.failed %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--error" title="{% for s in site.failedSources %}{{ s.name }}: {{ s.errorShort }}&#10;{% endfor %}"><span class="dot dot--error"></span>{{ site.totals.failed }} failed</a>{% endif %}
+        {% if site.totals.failed %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--error" title="{% for s in site.failedSources %}{{ s.name }}: {{ s.errorShort }}{% if s.carriedFrom %} (showing its events from {{ s.carriedFrom }}){% endif %}&#10;{% endfor %}"><span class="dot dot--error"></span>{{ site.totals.failed }} failed</a>{% endif %}
         <span class="sep">·</span><span id="history-spark" class="spark" aria-hidden="true"></span>
       </p>
     </section>
@@ -50,12 +50,6 @@ permalink: index.html
         <h2 class="label" id="price-label">Price</h2>
         <div class="choices" data-filter="price">
           <button type="button" data-value="any">Any</button><span class="sep">·</span><button type="button" data-value="free">Free</button><span class="sep">·</span><button type="button" data-value="paid">Paid</button>
-        </div>
-      </div>
-      <div class="filter" role="group" aria-labelledby="format-label">
-        <h2 class="label" id="format-label">Format</h2>
-        <div class="choices" data-filter="format">
-          <button type="button" data-value="any">Any</button><span class="sep">·</span><button type="button" data-value="in-person">In person</button><span class="sep">·</span><button type="button" data-value="online">Online</button>
         </div>
       </div>
       <div class="filter filter--search">
@@ -84,14 +78,14 @@ permalink: index.html
 
     <section class="health" id="health" aria-labelledby="health-title">
       <h2 class="section-title" id="health-title">Status</h2>
-      <p class="health__intro">Each source is scraped once a day. <strong>Empty</strong> means the scraper ran but found nothing, which usually means the site changed; <strong>failed</strong> means it errored or was blocked. Bars show events found on recent runs.</p>
+      <p class="health__intro">Each source is scraped once a day. <strong>Empty</strong> means the scraper ran but found nothing, which usually means the site changed; <strong>failed</strong> means it errored or was blocked, in which case its events from the last good run (up to a week old) are shown instead. Bars show events found on recent runs.</p>
       <table class="health-table">
         <thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col" class="num" title="Upcoming London events listed here after filtering and de-duplication">Events</th><th scope="col" class="num" title="Everything the scraper found, before filtering">Found</th><th scope="col">Recent runs</th></tr></thead>
         <tbody>
           {% for s in site.sources %}
           <tr class="health-row health-row--{{ s.status }}" data-source="{{ s.id }}">
             <th scope="row"><a href="{{ s.homepage }}" rel="noopener">{{ s.name }}</a></th>
-            <td><span class="dot dot--{{ s.status }}"></span>{% if s.status == "ok" %}ok{% elif s.status == "empty" %}empty{% elif s.status == "error" %}failed{% else %}—{% endif %}{% if s.error %}<span class="health-row__error" title="{{ s.error }}">{{ s.errorShort }}</span>{% endif %}</td>
+            <td><span class="dot dot--{{ s.status }}"></span>{% if s.status == "ok" %}ok{% elif s.status == "empty" %}empty{% elif s.status == "error" %}failed{% else %}—{% endif %}{% if s.error %}<span class="health-row__error" title="{{ s.error }}">{{ s.errorShort }}</span>{% endif %}{% if s.carriedFrom %}<span class="health-row__carried">Showing its events from the last good run, {{ s.carriedFrom }}.</span>{% endif %}</td>
             <td class="num">{{ s.count }}</td>
             <td class="num">{{ s.scraped }}</td>
             <td class="runs" data-runs="{{ s.id }}"></td>

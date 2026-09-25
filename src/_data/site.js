@@ -31,6 +31,9 @@ function shortError(message) {
     .trim();
 }
 
+const dayLabel = (iso) =>
+  new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short" }).format(new Date(iso));
+
 const londonLabel = (iso) =>
   new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
@@ -65,6 +68,8 @@ export default function () {
       errorShort: shortError(h?.error),
       warnings: h?.warnings?.length ?? 0,
       seconds: h ? Math.round(h.durationMs / 100) / 10 : null,
+      // A failed source showing events from its last good scrape.
+      carriedFrom: h?.status === "error" && h?.carried && h?.lastOkAt ? dayLabel(h.lastOkAt) : null,
     };
   });
 

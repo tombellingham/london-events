@@ -33,7 +33,6 @@ import { royalSociety } from "./royal-society.ts";
 import { rsa } from "./rsa.ts";
 import { rsaa } from "./rsaa.ts";
 import { rsc } from "./rsc.ts";
-import { rsm } from "./rsm.ts";
 import { sas } from "./sas.ts";
 import { seedTalks } from "./seed-talks.ts";
 import { societyOfAntiquaries } from "./society-of-antiquaries.ts";
@@ -68,7 +67,6 @@ export const sources: Source[] = [
   rgs,
   royalSociety,
   rsc,
-  rsm,
   rsaa,
   rsa,
   sas,

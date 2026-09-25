@@ -139,6 +139,21 @@ export interface SourceHealth {
   requests: number;
   durationMs: number;
   warnings: string[];
+  /** When the source last scraped successfully: this run, or an earlier one if this run failed. */
+  lastOkAt: string | null;
+  /** Events shown from the last good scrape because this run failed (before cross-source dedupe). */
+  carried: number;
+}
+
+/**
+ * A source's last good scrape: its normalized events, before cross-source
+ * de-duplication. Published as data/sources/<id>.json; when a later run of
+ * the source fails, its still-upcoming events are shown from here.
+ */
+export interface SourceSnapshot {
+  id: string;
+  scrapedAt: string;
+  events: EventRecord[];
 }
 
 export interface RunSummary {

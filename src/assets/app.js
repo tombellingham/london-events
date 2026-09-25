@@ -14,7 +14,7 @@
 
   var WINDOWS = { today: [0, 1], tomorrow: [1, 2], week: [0, 7], month: [0, 30] };
   var WINDOW_LABELS = { today: "today", tomorrow: "tomorrow", week: "in the next 7 days", month: "in the next 30 days" };
-  var DEFAULTS = { when: "week", price: "any", format: "any", q: "", off: [] };
+  var DEFAULTS = { when: "week", price: "any", q: "", off: [] };
   var PAGE_SIZE = 250;
   var STORAGE_KEY = "london-talks:filters:v1";
 
@@ -54,7 +54,7 @@
 
   function readState() {
     var params = new URLSearchParams(location.search);
-    var hasUrlState = ["when", "price", "format", "q", "off"].some(function (k) {
+    var hasUrlState = ["when", "price", "q", "off"].some(function (k) {
       return params.has(k);
     });
     var stored = {};
@@ -74,7 +74,6 @@
     return {
       when: pick("when", Object.keys(WINDOWS)),
       price: pick("price", ["any", "free", "paid"]),
-      format: pick("format", ["any", "in-person", "online"]),
       q: params.get("q") || "",
       off: off.filter(function (id) {
         return SOURCE_BY_ID[id];
@@ -86,13 +85,12 @@
     var params = new URLSearchParams();
     if (state.when !== DEFAULTS.when) params.set("when", state.when);
     if (state.price !== DEFAULTS.price) params.set("price", state.price);
-    if (state.format !== DEFAULTS.format) params.set("format", state.format);
     if (state.q) params.set("q", state.q);
     if (state.off.length) params.set("off", state.off.join(","));
     var qs = params.toString();
     history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ when: state.when, price: state.price, format: state.format, off: state.off }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ when: state.when, price: state.price, off: state.off }));
     } catch (e) {
       /* private mode etc. */
     }
@@ -131,8 +129,6 @@
   function matchesFacets(e, st) {
     if (st.price === "free" && e.free !== true) return false;
     if (st.price === "paid" && e.free !== false) return false;
-    if (st.format === "online" && e.online !== true) return false;
-    if (st.format === "in-person" && e.online !== false) return false;
     return true;
   }
 
@@ -222,8 +218,7 @@
   function eventHtml(e, qs, now) {
     var src = SOURCE_BY_ID[e.source];
     var meta = ['<span class="event__source">' + esc(src ? src.name : e.source) + "</span>"];
-    if (e.location && e.location !== "Online") meta.push("<span>" + highlight(e.location, qs) + "</span>");
-    if (e.online === true) meta.push('<span class="tag tag--online">Online</span>');
+    if (e.location) meta.push("<span>" + highlight(e.location, qs) + "</span>");
     if (e.free === true) meta.push('<span class="tag tag--free">Free</span>');
     else if (e.price) meta.push('<span class="tag">' + esc(shortPrice(e.price)) + "</span>");
     else if (e.free === false) meta.push('<span class="tag">Paid</span>');
@@ -293,7 +288,7 @@
       html += '<button type="button" class="more" id="show-more">Show ' + Math.min(PAGE_SIZE, list.length - shown) + " more of " + (list.length - shown) + " remaining</button>";
     }
     if (!list.length) {
-      html = '<p class="empty">No events match these filters' + (state.off.length || state.q || state.price !== "any" || state.format !== "any" ? '. <button type="button" id="reset-filters">Reset filters</button>' : ".") + "</p>";
+      html = '<p class="empty">No events match these filters' + (state.off.length || state.q || state.price !== "any" ? '. <button type="button" id="reset-filters">Reset filters</button>' : ".") + "</p>";
     }
     eventsEl.innerHTML = html;
     countEl.textContent = list.length.toLocaleString("en-GB") + (list.length === 1 ? " event " : " events ") + WINDOW_LABELS[state.when] + (state.off.length ? " · " + (SOURCES.length - state.off.length) + " of " + SOURCES.length + " sources" : "");
@@ -390,7 +385,7 @@
       return;
     }
     if (ev.target.id === "reset-filters") {
-      update({ price: "any", format: "any", q: "", off: [] });
+      update({ price: "any", q: "", off: [] });
       return;
     }
     var desc = ev.target.closest(".event__desc");

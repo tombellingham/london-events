@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { cleanTitleWithStatus, isMembersOnly, normalizeEvent, splitFormatMarker } from "../../scraper/core/normalize.ts";
+import { cleanTitleWithStatus, isExhibitionOrCourse, isMembersOnly, normalizeEvent, splitFormatMarker } from "../../scraper/core/normalize.ts";
 import { makeHorizon } from "../../scraper/core/runner.ts";
 import type { RawEvent, Source } from "../../scraper/core/types.ts";
 
@@ -31,6 +31,14 @@ describe("title clean-up", () => {
     assert.equal(isMembersOnly("Autumn Lecture", "This event is for members only."), true);
     assert.equal(isMembersOnly("Autumn Lecture", "Open to all; members get priority booking."), false);
   });
+  it("spots exhibitions and courses, but not talks about them", () => {
+    assert.equal(isExhibitionOrCourse("Bringing It Home Exhibition"), true);
+    assert.equal(isExhibitionOrCourse("The Science of Stress: A 4-week course"), true);
+    assert.equal(isExhibitionOrCourse("Frida: The Making of an Icon: Exhibition Talk"), false);
+    assert.equal(isExhibitionOrCourse("Stolen! Theft in the archive: exhibition launch and lecture"), false);
+    assert.equal(isExhibitionOrCourse("A crash course in climate science"), false);
+    assert.equal(isExhibitionOrCourse("The Course of Empire"), false);
+  });
 });
 
 describe("normalizeEvent", () => {
@@ -57,7 +65,7 @@ describe("normalizeEvent", () => {
     assert.ok(result.ok);
     assert.equal(result.event.time, "19:00");
   });
-  it("drops past, far-future, long-running, cancelled and invalid events", () => {
+  it("drops past, far-future, week-plus runs, exhibitions, cancelled and invalid events", () => {
     const reason = (r: RawEvent) => {
       const res = normalizeEvent(r, source, horizon);
       return res.ok ? "ok" : res.reason;
@@ -65,6 +73,9 @@ describe("normalizeEvent", () => {
     assert.equal(reason(raw({ start: { date: "2026-09-24", time: null } })), "past");
     assert.equal(reason(raw({ start: { date: "2026-11-09", time: null } })), "beyond-horizon");
     assert.equal(reason(raw({ end: { date: "2026-12-01", time: null } })), "long-run");
+    assert.equal(reason(raw({ end: { date: "2026-10-07", time: null } })), "ok"); // a 7-day conference
+    assert.equal(reason(raw({ end: { date: "2026-10-08", time: null } })), "long-run"); // 8 days
+    assert.equal(reason(raw({ title: "Autumn Exhibition" })), "not-a-talk");
     assert.equal(reason(raw({ title: "CANCELLED: A Talk About Maps" })), "cancelled");
     assert.equal(reason(raw({ url: "/relative" })), "invalid");
     assert.equal(reason(raw({ start: { date: "2026-02-30", time: null } })), "invalid");
@@ -73,13 +84,17 @@ describe("normalizeEvent", () => {
     assert.ok(normalizeEvent(raw({ start: { date: "2026-09-25", time: "09:00" } }), source, horizon).ok);
     assert.ok(normalizeEvent(raw({ start: { date: "2026-11-08", time: null } }), source, horizon).ok);
   });
-  it("drops in-person events outside London unless they can be joined online", () => {
-    const away = normalizeEvent(raw({ location: "Assembly Rooms, Edinburgh" }), source, horizon);
-    assert.equal(away.ok ? "ok" : away.reason, "outside-london");
-    const streamed = normalizeEvent(raw({ location: "Assembly Rooms, Edinburgh", hints: ["Watch online via our livestream"] }), source, horizon);
-    assert.ok(streamed.ok);
-    assert.equal(streamed.event.online, true);
-    assert.match(streamed.event.location ?? "", /livestream/);
+  it("keeps in-person London events only", () => {
+    const reason = (r: RawEvent, s: Source = source) => {
+      const res = normalizeEvent(r, s, horizon);
+      return res.ok ? "ok" : res.reason;
+    };
+    assert.equal(reason(raw({ location: "Assembly Rooms, Edinburgh" })), "outside-london");
+    assert.equal(reason(raw({ location: "Assembly Rooms, Edinburgh", hints: ["Watch online via our livestream"] })), "outside-london");
+    assert.equal(reason(raw({ location: "Online" })), "online-only");
+    assert.equal(reason(raw({ title: "A Talk About Maps (Online)" }), withDefaults), "online-only");
+    assert.equal(reason(raw({ online: true, location: "Senate House, WC1E 7HU" })), "online-only");
+    assert.equal(reason(raw({ description: "This is an online event, held on Zoom." })), "online-only");
   });
   it("applies source defaults and hybrid-as-in-person", () => {
     const d = normalizeEvent(raw(), withDefaults, horizon);
@@ -90,10 +105,9 @@ describe("normalizeEvent", () => {
     const hybrid = normalizeEvent(raw({ location: "Test Hall and online" }), source, horizon);
     assert.ok(hybrid.ok);
     assert.equal(hybrid.event.online, false);
-    const online = normalizeEvent(raw({ title: "A Talk About Maps (Online)" }), withDefaults, horizon);
-    assert.ok(online.ok);
-    assert.equal(online.event.online, true);
-    assert.equal(online.event.location, "Online");
+    const streamed = normalizeEvent(raw({ location: "Test Hall", description: "Join us in person or via the livestream." }), source, horizon);
+    assert.ok(streamed.ok);
+    assert.equal(streamed.event.online, false);
   });
   it("respects a source's include filter", () => {
     const picky: Source = { ...source, include: (e) => !/maps/i.test(e.title) };

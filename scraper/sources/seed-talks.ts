@@ -2,7 +2,8 @@
  * Seed Talks — the London page lists every upcoming talk as a card linking
  * to its Eventbrite page (date, 🕐 time, 📍 venue, blurb); most cards also
  * have a schema.org Event in JSON-LD with price and attendance mode, which
- * we merge in by title. Online editions are marked "[online]" in the title.
+ * we merge in by title. Online editions are marked "💻 Online Event" (and
+ * carry no JSON-LD) or "[online]" in the title; they're dropped as online-only.
  */
 
 import type { RawEvent, Source } from "../core/types.ts";
@@ -57,14 +58,18 @@ export const seedTalks: Source = {
       const offers = Array.isArray(data?.offers) ? data?.offers[0] : data?.offers;
       const venue = iconText("📍") || clean(typeof data?.location === "object" ? data.location.name : "");
       const mode = data?.eventAttendanceMode ?? "";
+      const onlineCard = /online/i.test(iconText("💻")) || /\[online\]/i.test(title);
+      // Online editions give times for other timezones first: "5pm ET, 10pm UK".
+      const timeText = iconText("🕐");
+      const ukTime = timeText.match(/([\d.:]+\s*(?:am|pm)?)\s*UK\b/i)?.[1];
       events.push({
         title,
         url: href.split("?")[0],
-        start: { date, time: fromLd?.time ?? parseTime(iconText("🕐")) },
+        start: { date, time: fromLd?.time ?? parseTime(ukTime ?? timeText) },
         location: venue || null,
         description: data?.description ?? clean(card.find("p").first().text()),
         priceText: offers?.price ? (Number(offers.price) === 0 ? "Free" : `£${offers.price}`) : null,
-        online: /OnlineEventAttendanceMode/.test(mode) || /\[online\]/i.test(title) ? true : /OfflineEventAttendanceMode|MixedEventAttendanceMode/.test(mode) ? false : null,
+        online: onlineCard || /OnlineEventAttendanceMode/.test(mode) ? true : /OfflineEventAttendanceMode|MixedEventAttendanceMode/.test(mode) || venue ? false : null,
       });
     });
     return events;

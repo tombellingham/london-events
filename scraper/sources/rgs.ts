@@ -4,8 +4,8 @@
  * by pageIndex. Start times only appear on each event page's "Key
  * information" card, so we fetch those for events inside the window.
  *
- * The listing includes regional-branch and partner events; the normalizer
- * keeps London + online ones.
+ * The listing includes regional-branch, partner and online-only events; only
+ * London ones (including "London and online") are kept.
  */
 
 import type { RawEvent, Source } from "../core/types.ts";
@@ -51,24 +51,16 @@ export const rgs: Source = {
         if (ctx.isBeyondHorizon(date)) beyond++;
         const location = clean(item.location);
         // `location` is a region: London, Online, "London and online", or a branch town elsewhere.
-        const inLondon = /^london(?:\s+and\s+online)?$/i.test(location);
-        const onlineElsewhere = !inLondon && /\bonline\b/i.test(location);
-        if (!inLondon && !onlineElsewhere) continue;
+        if (!/^london(?:\s+and\s+online)?$/i.test(location)) continue;
         // Teacher CPD, careers sessions for students and members-only events aren't public talks.
         if (/^(?:teachers|schools|professionals|postgraduates|undergraduates|early career|members only)$/i.test(clean(item.memberAccessType))) continue;
         events.push({
           title: item.title,
           url,
           start: { date, time: null },
-          // bare "London" → the RGS default venue; "Bath and online" → joinable online only
-          location: /^london$/i.test(location)
-            ? null
-            : /^london\s+and\s+online$/i.test(location)
-              ? "Royal Geographical Society, Kensington Gore (and online)"
-              : onlineElsewhere && !/^online$/i.test(location)
-                ? "Online"
-                : location,
-          online: onlineElsewhere ? true : null,
+          // bare "London" → the RGS default venue
+          location: /^london$/i.test(location) ? null : "Royal Geographical Society, Kensington Gore (and online)",
+          online: false,
           description: item.content ?? null,
           priceText: item.price ?? null,
           speakers: trailingSpeaker(item.title),

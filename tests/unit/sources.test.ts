@@ -10,8 +10,8 @@ import { baApiEvent, baDetails } from "../../scraper/sources/british-academy.ts"
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
 describe("source registry", () => {
-  it("has 35 sources with unique, URL-safe ids", () => {
-    assert.equal(sources.length, 35);
+  it("has 34 sources with unique, URL-safe ids", () => {
+    assert.equal(sources.length, 34);
     const ids = sources.map((s) => s.id);
     assert.equal(new Set(ids).size, ids.length);
     for (const id of ids) assert.match(id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);

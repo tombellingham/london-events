@@ -14,7 +14,7 @@ import { enrichAll } from "../core/async.ts";
 import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://www.bbk.ac.uk";
-const INTERNAL = /^(?:get ready|virtual enrolment|enrolment|induction|welcome|uni connect|linking london|study skills|open (?:day|evening)|applicant|offer holder|graduation|freshers|library tour|ilc open session|academic english|presenting with confidence|orientation|post-arrival|campus tours?|disabled students|meet the)\b|\b(?:study skills|enrolment support|drop-in session|offer holders?|short course(?: booking)?|course booking|workshop series|cpd spotlight|careers? (?:fair|clinic|workshop)|employability|taster (?:course|session|day)|a career for you|fast stream|for (?:new|prospective|international|current) (?:students|undergraduates|postgraduates|applicants)|students[’']? allowance|information session)\b/i;
+const INTERNAL = /^(?:get ready|virtual enrolment|enrolment|induction|welcome|uni connect|linking london|study skills|open (?:day|evening)|applicant|offer holder|graduation|freshers|library tour|ilc open session|academic english|presenting with confidence|orientation|post-arrival|campus tours?|disabled students|meet the)\b|\b(?:study skills|enrolment support|drop-in session|offer holders?|short course(?: booking)?|course booking|workshop series|cpd spotlight|careers? (?:fair|clinic|workshop)|employability|taster (?:course|session|day)|a career for you|fast stream|for (?:new|prospective|international|current) (?:students|undergraduates|postgraduates|applicants)|students[’']? allowance|information session|ilc workshop|(?:academic|digital|writing|study) skills|personal statement|referencing)\b/i;
 
 export const birkbeck: Source = {
   id: "birkbeck",

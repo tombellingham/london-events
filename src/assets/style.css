@@ -425,10 +425,6 @@ h1 {
   color: var(--ok);
   font-weight: 600;
 }
-.tag--online {
-  font-weight: 600;
-}
-
 .event__speakers {
   font-size: 0.8125rem;
   margin: 0.2rem 0 0;
@@ -521,6 +517,11 @@ mark {
   color: var(--error);
   font-size: 0.75rem;
   word-break: break-word;
+}
+.health-row__carried {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 .runs {
   white-space: nowrap;

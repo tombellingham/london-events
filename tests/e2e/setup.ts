@@ -7,7 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { blob, health, history } from "./fixture.ts";
+import { blob, health, history, snapshots } from "./fixture.ts";
 
 export default function setup(): void {
   const root = join(process.cwd(), ".e2e");
@@ -17,6 +17,8 @@ export default function setup(): void {
   writeFileSync(join(build, "events.json"), JSON.stringify(blob));
   writeFileSync(join(build, "health.json"), JSON.stringify(health));
   writeFileSync(join(build, "history.json"), JSON.stringify(history));
+  mkdirSync(join(build, "sources"));
+  for (const s of snapshots) writeFileSync(join(build, "sources", `${s.id}.json`), JSON.stringify(s));
   execFileSync("npx", ["eleventy", "--quiet", `--output=${join(root, "site")}`], {
     stdio: "inherit",
     env: { ...process.env, BUILD_DIR: build },
