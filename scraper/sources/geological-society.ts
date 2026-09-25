@@ -3,7 +3,7 @@
  * its search form (with ASP.NET anti-forgery token + cookie) and pages with
  * `page=N`. Listing cards have date badges and truncated titles, so each
  * event page supplies the full title, start time, venue, speakers and fees.
- * Regional-group events elsewhere are dropped unless they're online.
+ * Regional-group events elsewhere and online-only events are dropped.
  */
 
 import type { RawEvent, ScrapeContext, Source } from "../core/types.ts";

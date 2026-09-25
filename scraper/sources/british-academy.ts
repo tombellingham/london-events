@@ -11,8 +11,7 @@
  * and event pages can then be fetched from inside the homepage. If the API
  * isn't readable, the rendered /events/ list is used instead.
  *
- * Many lectures are held around the UK; normalize keeps those only when
- * they're streamed ("Online and in person" in Facilities).
+ * Many lectures are held around the UK; normalize keeps the London ones.
  */
 
 import type { LondonDateTime, RawEvent, ScrapeContext, Source } from "../core/types.ts";
@@ -105,7 +104,7 @@ export function baDetails(event: Listed, html: string): RawEvent {
     priceText: price || null,
     description: clean($('meta[name="description"]').attr("content")) || event.description,
     speakers: uniqNames([...speakers($), ...(event.speakers ?? [])]),
-    // "Online and in person" / "live streamed" keeps streamed lectures outside London.
+    // "Online and in person" in Facilities marks a hybrid (in-person) lecture.
     hints: [facilities, clean($(".wysiwyg").text()).slice(0, 3000), ...(event.hints ?? [])],
   };
 }

@@ -6,8 +6,8 @@
  * Guardian Live" post, which keeps an up-to-date list of upcoming events)
  * and from the section front, then parse each article.
  *
- * Many events are livestream-only; events in other cities that are also
- * livestreamed are kept as online events (see normalize.ts).
+ * Many events are livestream-only or in other cities; normalize.ts keeps the
+ * in-person London ones.
  */
 
 import type { RawEvent, Source } from "../core/types.ts";

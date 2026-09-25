@@ -4,12 +4,12 @@
  * health for the header indicators and the run history.
  */
 
-import type { DateLike, EventRecord, Horizon, RawEvent, RunSummary, ScrapeContext, Source, SourceHealth } from "./types.ts";
+import type { DateLike, EventRecord, Horizon, RawEvent, RunSummary, ScrapeContext, Source, SourceHealth, SourceSnapshot } from "./types.ts";
 import { Http } from "./http.ts";
 import { BrowserPool, closeBrowser } from "./browser.ts";
 import { HttpError } from "./http.ts";
-import { addDays, fromLondon, londonDate, toLondonDateTime } from "./dates.ts";
-import { normalizeEvent } from "./normalize.ts";
+import { addDays, daysBetween, fromLondon, londonDate, toLondonDateTime } from "./dates.ts";
+import { normalizeEvent, stillListable } from "./normalize.ts";
 import { dedupe } from "./dedupe.ts";
 import { errorMessage, mapLimit } from "./async.ts";
 
@@ -34,11 +34,17 @@ export interface RunOptions {
   quiet?: boolean;
   /** Re-run sources that met a bot check, one at a time, after the main pass (default true). */
   retryBlocked?: boolean;
+  /** Loads a source's last good scrape, to stand in for it when it fails. */
+  lastGood?: (source: Source) => Promise<SourceSnapshot | null>;
+  /** The oldest last good scrape (in days) that may stand in for a failed one (default 7). */
+  carryMaxDays?: number;
 }
 
 export interface RunOutput {
   events: EventRecord[];
   summary: RunSummary;
+  /** Each source's last good scrape, to publish for the next run: today's, or the one carried over. */
+  snapshots: SourceSnapshot[];
 }
 
 
@@ -131,6 +137,8 @@ async function runOne(source: Source, horizon: Horizon, options: RunOptions): Pr
       requests: http.requests + browser.requests,
       durationMs: Date.now() - started,
       warnings,
+      lastOkAt: null, // filled in once the run has finished
+      carried: 0,
     },
   };
 }
@@ -172,14 +180,37 @@ export async function runSources(sources: Source[], options: RunOptions): Promis
   }
   await closeBrowser();
 
+  // A source that failed today stands in with its last good scrape, if that
+  // is recent enough: one bad day shouldn't empty its listings.
+  const finishedAt = new Date();
+  const carryMaxDays = options.carryMaxDays ?? 7;
+  const snapshots: SourceSnapshot[] = [];
+  for (const [i, source] of sources.entries()) {
+    const r = results[i];
+    if (r.health.status !== "error") {
+      r.health.lastOkAt = finishedAt.toISOString();
+      snapshots.push({ id: source.id, scrapedAt: r.health.lastOkAt, events: r.events });
+      continue;
+    }
+    const previous = options.lastGood ? await options.lastGood(source).catch(() => null) : null;
+    if (!previous) continue;
+    snapshots.push(previous);
+    r.health.lastOkAt = previous.scrapedAt;
+    const age = daysBetween(londonDate(new Date(previous.scrapedAt)), horizon.fromDate);
+    if (age > carryMaxDays) continue;
+    r.events = previous.events.filter((e) => stillListable(e, source, horizon)).map(({ alsoAt: _, ...e }) => e);
+    r.health.carried = r.events.length;
+    if (!options.quiet) console.log(`↺ ${source.name}: showing ${r.events.length} events from the last good scrape (${previous.scrapedAt.slice(0, 10)})`);
+  }
+
   const { events, exactDuplicates, crossSourceDuplicates } = dedupe(results.flatMap((r) => r.events));
   const counts = new Map<string, number>();
   for (const e of events) counts.set(e.source, (counts.get(e.source) ?? 0) + 1);
   const health = results.map((r) => ({ ...r.health, count: counts.get(r.health.id) ?? 0 }));
 
-  const finishedAt = new Date();
   return {
     events,
+    snapshots,
     summary: {
       startedAt: startedAt.toISOString(),
       finishedAt: finishedAt.toISOString(),

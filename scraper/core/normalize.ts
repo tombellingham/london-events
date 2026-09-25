@@ -11,10 +11,23 @@ import { clean, htmlToText, speakersFromTitle, stripWrappingQuotes, truncate, un
 import { classifyFree, classifyOnline, isOutsideLondon } from "./classify.ts";
 
 export const DESCRIPTION_MAX = 420;
-/** Anything spanning longer than this is an exhibition/course run, not an event. */
-export const MAX_SPAN_DAYS = 14;
+/**
+ * Anything running longer than this many days (inclusive) is an exhibition or
+ * a course, not a talk. A conference of up to a week stays in.
+ */
+export const MAX_RUN_DAYS = 7;
 
-export type DropReason = "invalid" | "past" | "beyond-horizon" | "long-run" | "outside-london" | "cancelled" | "members-only" | "excluded";
+export type DropReason =
+  | "invalid"
+  | "past"
+  | "beyond-horizon"
+  | "long-run"
+  | "not-a-talk"
+  | "online-only"
+  | "outside-london"
+  | "cancelled"
+  | "members-only"
+  | "excluded";
 
 export type NormalizeResult = { ok: true; event: EventRecord } | { ok: false; reason: DropReason; detail?: string };
 
@@ -88,13 +101,38 @@ function absoluteUrl(url: string): string | null {
 }
 
 const ONLINE_IN_TITLE = /\[online\]|\(online\)|\bonline:\s|:\s*online\b|\s[-–—]\s*online\b|\bwebinar\b|\blive\s?stream\b|\bvirtual\s+(?:event|talk|lecture)\b/i;
-const HAS_ONLINE_OPTION = /\b(?:online|livestream|live[\s-]stream|live[\s-]streamed|watch\s+online|zoom|virtual(?:ly)?|broadcast)\b/i;
+
+/**
+ * Exhibitions and courses that are listed one day at a time (so no end date
+ * gives them away): "Bringing It Home Exhibition", "A 4-week course". A talk
+ * about one ("Exhibition talk", "exhibition launch and lecture") stays.
+ */
+export function isExhibitionOrCourse(title: string): boolean {
+  if (!/\bexhibitions?\b|(?<!\b(?:of|golf|main|race|crash)\s)\bcourses?\b(?!\s+of\b)/i.test(title)) return false;
+  return !/\b(?:talks?|lectures?|launch|tours?|conversations?|discussions?|panels?|debates?|seminars?|symposium|q\s?&\s?a|readings?|in\s+focus)\b/i.test(title);
+}
 
 /** Events restricted to a society's members/fellows/friends aren't public listings. */
 export function isMembersOnly(title: string, description: string): boolean {
   if (/\b(?:members|fellows|friends)(?:\s+of\s+(?:the\s+)?[\w&]+)?['’]?\s*(?:\(only\)|only\b)|\bfellows['’]\s+(?:tour|evening|meeting|event|drinks)\b/i.test(title)) return true;
   const lead = htmlToText(description).slice(0, 400);
   return /\b(?:for|open to)\s+(?:members|fellows)\s+only\b|\b(?:members|fellows)[\s-]only\s+(?:event|lecture|tour|meeting)\b|\bin person and members only\b|\bthis (?:event|tour|lecture) is (?:for|open to) (?:members|fellows)\b/i.test(lead);
+}
+
+/**
+ * Re-applies the rules to an event normalized on an earlier run (a failed
+ * source's last good scrape), in case they have changed since.
+ */
+export function stillListable(event: EventRecord, source: Source, horizon: Horizon): boolean {
+  return (
+    event.date >= horizon.fromDate &&
+    event.date < horizon.toDate &&
+    event.online !== true &&
+    !isOutsideLondon(event.location) &&
+    !isExhibitionOrCourse(event.title) &&
+    !isMembersOnly(event.title, event.description ?? "") &&
+    (!source.include || source.include(event))
+  );
 }
 
 export function eventId(source: string, url: string, date: string, time: string | null): string {
@@ -118,13 +156,14 @@ export function normalizeEvent(raw: RawEvent, source: Source, horizon: Horizon):
   const start: LondonDateTime = parsed.time === "00:00" ? { date: parsed.date, time: null } : parsed;
 
   const end = asLondon(raw.end ?? null);
-  if (end && daysBetween(start.date, end.date) > MAX_SPAN_DAYS) {
+  if (end && daysBetween(start.date, end.date) + 1 > MAX_RUN_DAYS) {
     return { ok: false, reason: "long-run", detail: title };
   }
 
   if (start.date < horizon.fromDate) return { ok: false, reason: "past" };
   if (isMembersOnly(title, raw.description ?? "")) return { ok: false, reason: "members-only", detail: title };
   if (start.date >= horizon.toDate) return { ok: false, reason: "beyond-horizon" };
+  if (isExhibitionOrCourse(title)) return { ok: false, reason: "not-a-talk", detail: title };
 
   const fullDescription = htmlToText(raw.description ?? "");
   let description: string | null = fullDescription;
@@ -153,16 +192,10 @@ export function normalizeEvent(raw: RawEvent, source: Source, horizon: Horizon):
   // A source with a home venue and no online signal anywhere: it's at the venue.
   if (online === null && !location && source.defaults?.location) online = false;
 
-  if (!location && online !== true && source.defaults?.location) location = source.defaults.location;
-  if (!location && online === true) location = "Online";
-
-  // London only: in-person events elsewhere are dropped, unless they can be joined online.
-  if (online !== true && isOutsideLondon(location)) {
-    const joinable = HAS_ONLINE_OPTION.test([location, ...hints, fullDescription].join(" "));
-    if (!joinable) return { ok: false, reason: "outside-london", detail: `${title} @ ${location}` };
-    online = true;
-    location = `${location} (livestream)`;
-  }
+  // In-person London events only (hybrid ones count as in person).
+  if (online === true) return { ok: false, reason: "online-only", detail: title };
+  if (!location && source.defaults?.location) location = source.defaults.location;
+  if (isOutsideLondon(location)) return { ok: false, reason: "outside-london", detail: `${title} @ ${location}` };
 
   // Sources without speaker data get the (conservative) title reading: "X in
   // conversation with Y", "An evening with X", "X: Title" when X is clearly a person.

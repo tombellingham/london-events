@@ -4,18 +4,24 @@
  *   npm run scrape                       # everything, writes .build/*.json
  *   npm run scrape -- --only=lse,kcl     # a subset
  *   npm run scrape -- --only=lse --print # dev: print events, don't write
+ *   npm run scrape -- --fail=lse,kcl     # dev: pretend those sources failed
+ *                                        # (to see the last-good fallback)
  *
  * Outputs (consumed by the Eleventy build in src/):
  *   .build/events.json   the event blob shipped to the browser
  *   .build/health.json   this run's per-source status
  *   .build/history.json  rolling history of runs (previous copy is read back
  *                        from the live site, so no database or commits needed)
+ *   .build/sources/<id>.json  each source's last good scrape; when a source
+ *                        fails, the next run reads its copy back from the live
+ *                        site and shows the still-upcoming events from it
  */
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { sources as allSources } from "./sources/index.ts";
 import { runSources } from "./core/runner.ts";
+import { publishedHistory, publishedSnapshot } from "./core/published.ts";
 import type { EventRecord, HistoryEntry, RunSummary } from "./core/types.ts";
 
 const OUT_DIR = join(process.cwd(), ".build");
@@ -29,17 +35,6 @@ function arg(name: string): string | undefined {
   return hit === `--${name}` ? "true" : hit.slice(prefix.length);
 }
 
-async function previousHistory(): Promise<HistoryEntry[]> {
-  if (arg("no-history")) return [];
-  try {
-    const res = await fetch(`${SITE_URL}/data/history.json`, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) return [];
-    const data = (await res.json()) as unknown;
-    return Array.isArray(data) ? (data as HistoryEntry[]).filter((h) => h && typeof h.at === "string") : [];
-  } catch {
-    return [];
-  }
-}
 
 function historyEntry(summary: RunSummary): HistoryEntry {
   return {
@@ -67,7 +62,7 @@ function printSummary(summary: RunSummary): void {
   console.log("\n── Sources ─────────────────────────────────────────────────────────");
   const rows = [...summary.sources].sort((a, b) => a.name.localeCompare(b.name));
   for (const s of rows) {
-    const status = s.status === "ok" ? "ok   " : s.status === "empty" ? "EMPTY" : "FAIL ";
+    const status = s.status === "ok" ? "ok   " : s.status === "empty" ? "EMPTY" : s.carried ? "STALE" : "FAIL ";
     const dropped = Object.entries(s.dropped).map(([k, v]) => `${k}:${v}`).join(" ");
     console.log(
       `${status} ${s.name.padEnd(42)} ${String(s.count).padStart(4)} events  ${String(s.scraped).padStart(4)} scraped  ${String(s.requests).padStart(3)} req  ${(s.durationMs / 1000).toFixed(1).padStart(5)}s  ${dropped}${s.error ? `\n      ↳ ${s.error}` : ""}`,
@@ -81,17 +76,22 @@ function printSummary(summary: RunSummary): void {
 async function main(): Promise<void> {
   const only = arg("only")?.split(",").map((s) => s.trim()).filter(Boolean);
   const skip = arg("skip")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
+  const fail = arg("fail")?.split(",").map((s) => s.trim()).filter(Boolean) ?? [];
   const horizonDays = Number(arg("horizon") ?? process.env.HORIZON_DAYS ?? 45);
   const print = Boolean(arg("print"));
 
-  const unknown = [...(only ?? []), ...skip].filter((id) => !allSources.some((s) => s.id === id));
+  const unknown = [...(only ?? []), ...skip, ...fail].filter((id) => !allSources.some((s) => s.id === id));
   if (unknown.length) throw new Error(`Unknown source id(s): ${unknown.join(", ")}. Known: ${allSources.map((s) => s.id).join(", ")}`);
-  const selected = allSources.filter((s) => (!only || only.includes(s.id)) && !skip.includes(s.id));
+  const selected = allSources
+    .filter((s) => (!only || only.includes(s.id)) && !skip.includes(s.id))
+    .map((s) => (fail.includes(s.id) ? { ...s, scrape: () => Promise.reject(new Error("Simulated failure (--fail)")) } : s));
 
-  const { events, summary } = await runSources(selected, {
+  const { events, summary, snapshots } = await runSources(selected, {
     horizonDays,
     concurrency: Number(process.env.SCRAPE_CONCURRENCY ?? 6),
     retryBlocked: process.env.RETRY_BLOCKED !== "0",
+    // --no-history: a clean slate (no run history, no fallback for failed sources).
+    lastGood: arg("no-history") ? undefined : (source) => publishedSnapshot(SITE_URL, source.id),
   });
 
   if (print) printEvents(events);
@@ -105,7 +105,11 @@ async function main(): Promise<void> {
       JSON.stringify({ generatedAt: summary.finishedAt, horizonDays, sources: catalog, events }),
     );
     writeFileSync(join(OUT_DIR, "health.json"), JSON.stringify(summary, null, 2));
-    const history = [...(await previousHistory()), historyEntry(summary)].slice(-HISTORY_LIMIT);
+    const snapshotDir = join(OUT_DIR, "sources");
+    rmSync(snapshotDir, { recursive: true, force: true });
+    mkdirSync(snapshotDir);
+    for (const snapshot of snapshots) writeFileSync(join(snapshotDir, `${snapshot.id}.json`), JSON.stringify(snapshot));
+    const history = [...(arg("no-history") ? [] : await publishedHistory(SITE_URL)), historyEntry(summary)].slice(-HISTORY_LIMIT);
     writeFileSync(join(OUT_DIR, "history.json"), JSON.stringify(history));
     console.log(`\nWrote ${events.length} events to ${join(OUT_DIR, "events.json")} (history: ${history.length} runs)`);
   }

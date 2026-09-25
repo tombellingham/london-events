@@ -1,7 +1,7 @@
 /**
  * How To Academy — the events calendar lists everything upcoming on one page
- * in three sections: SINGLE EVENTS (London), ONLINE EVENTS (livestreams) and
- * MULTIPLE DATES (tours). Tour pages list each date as a ticket link whose URL
+ * in three sections: SINGLE EVENTS (London), ONLINE EVENTS (livestreams, not
+ * read: online-only events are out of scope) and MULTIPLE DATES (tours). Tour pages list each date as a ticket link whose URL
  * encodes the venue and exact start ("…/london-royal-geographical-society/
  * 2026-10-13-19-30"), so tours become one event per London date. Event pages
  * provide description, speakers and prices. Everything here is ticketed.
@@ -82,7 +82,7 @@ export const howToAcademy: Source = {
 
     $("h2.event-type-header").each((_, header) => {
       const section = sectionOf(clean($(header).text()));
-      if (!section) return;
+      if (!section || section === "online") return;
       $(header)
         .nextUntil("h2.event-type-header")
         .find("a.calendar_page__months--single")
@@ -108,8 +108,8 @@ export const howToAcademy: Source = {
             title,
             url,
             start: { date, time: parseTime(styled) },
-            location: section === "online" ? "Online" : venue || null,
-            online: section === "online",
+            location: venue || null,
+            online: false,
             speakers: uniqNames([...speakersFromPhrase(title), ...speakersFromPhrase(subtitle)]),
             hints: [subtitle],
           });

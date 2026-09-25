@@ -2,8 +2,8 @@
  * Institute of Physics — /events (Drupal view, 12 per page, ?page=N from 0)
  * lists IOP events across the UK and Ireland: type ("In-person" / "Online"),
  * title and "Starts Tue 29 Sep 2026 19:30". Each event page has the address
- * ("Where"), the description and topic/region/audience tags. Kept: online
- * events, and in-person events whose address is in London; dropped:
+ * ("Where"), the description and topic/region/audience tags. Kept: in-person
+ * (or hybrid) events whose address is in London; dropped: online-only events,
  * membership/careers admin sessions and teacher-only CPD.
  *
  * iop.org answers only a real (headed) browser from CI.
@@ -30,7 +30,7 @@ export const iop: Source = {
   name: "Institute of Physics",
   homepage: `${SITE}/events`,
   timeoutMs: 480_000,
-  include: (e) => !ADMIN.test(e.title) && (e.online === true || isInLondon(e.location)),
+  include: (e) => !ADMIN.test(e.title) && isInLondon(e.location),
   async scrape(ctx) {
     const listed: Listed[] = [];
     const seen = new Set<string>();
@@ -57,7 +57,8 @@ export const iop: Source = {
       if (beyond === cards.length) break;
     }
 
-    const candidates = listed.filter((e) => ctx.inWindow(e.start) && !ADMIN.test(e.title));
+    // Online-only events are out of scope: don't spend a (browser) page load on them.
+    const candidates = listed.filter((e) => ctx.inWindow(e.start) && !ADMIN.test(e.title) && e.online !== true);
     const detailed = await enrichAll<Listed>(
       ctx,
       candidates,

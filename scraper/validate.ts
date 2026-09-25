@@ -9,11 +9,11 @@
  *   MIN_EVENTS=0 npm run validate   # e.g. for a partial --only scrape
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { addDays, fromLondon, londonDate } from "./core/dates.ts";
 import { normalizeUrl } from "./core/dedupe.ts";
-import type { EventRecord, HistoryEntry, RunSummary } from "./core/types.ts";
+import type { EventRecord, HistoryEntry, RunSummary, SourceSnapshot } from "./core/types.ts";
 
 const BUILD = process.env.BUILD_DIR ?? join(process.cwd(), ".build");
 const MIN_EVENTS = Number(process.env.MIN_EVENTS ?? 100);
@@ -97,6 +97,23 @@ if (health && blob) {
 }
 
 if (history && !Array.isArray(history)) fail("history.json is not an array");
+
+// Per-source snapshots: the next run's fallback for any source that fails.
+if (health) {
+  const dir = join(BUILD, "sources");
+  const files = existsSync(dir) ? new Set(readdirSync(dir)) : new Set<string>();
+  for (const s of health.sources) {
+    const file = `${s.id}.json`;
+    if (!files.has(file)) {
+      if (s.status !== "error") fail(`sources/${file} is missing`);
+      continue;
+    }
+    const snap = read<SourceSnapshot>(`sources/${file}`);
+    if (!snap) continue;
+    if (snap.id !== s.id || !Array.isArray(snap.events) || !Number.isFinite(Date.parse(snap.scrapedAt))) fail(`sources/${file} is malformed`);
+    else if (snap.scrapedAt !== s.lastOkAt) fail(`sources/${file} is from ${snap.scrapedAt}, health says ${s.lastOkAt}`);
+  }
+}
 
 if (errors.length) {
   console.error(`✗ ${errors.length} validation error(s):`);
