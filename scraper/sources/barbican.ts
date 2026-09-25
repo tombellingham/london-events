@@ -11,6 +11,7 @@ import { parseIsoInstant } from "../core/dates.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, speakersFromTitle } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
+import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://www.barbican.org.uk";
 
@@ -22,7 +23,9 @@ export const barbican: Source = {
   async scrape(ctx) {
     const events: RawEvent[] = [];
     for (let page = 0; page < 15; page++) {
-      const $ = loadHtml(await ctx.http.text(`${SITE}/whats-on/talks-events${page ? `?page=${page}` : ""}`));
+      const html = await laterPage(ctx, page, 0, () => ctx.http.text(`${SITE}/whats-on/talks-events${page ? `?page=${page}` : ""}`));
+      if (html === null) break;
+      const $ = loadHtml(html);
       const cards = $("article.listing--event");
       if (cards.length === 0) break;
       let beyond = 0;

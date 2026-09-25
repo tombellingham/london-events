@@ -66,7 +66,7 @@ async function runOne(source: Source, horizon: Horizon, options: RunOptions): Pr
 
   let raw: RawEvent[] = [];
   let error: string | null = null;
-  const timeoutMs = options.timeoutMs ?? 240_000;
+  const timeoutMs = source.timeoutMs ?? options.timeoutMs ?? 240_000;
   let timer: NodeJS.Timeout | undefined;
   try {
     raw = await Promise.race([

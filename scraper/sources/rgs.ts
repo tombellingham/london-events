@@ -13,6 +13,7 @@ import { parseDate, parseTime } from "../core/dates.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, trailingSpeaker } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
+import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://www.rgs.org";
 const API = `${SITE}/umbraco/api/listing/articles`;
@@ -38,9 +39,10 @@ export const rgs: Source = {
   async scrape(ctx) {
     const events: RawEvent[] = [];
     for (let pageIndex = 1; pageIndex <= 30; pageIndex++) {
-      const data = await ctx.http.json<{ items: RgsItem[]; totalItems: number }>(
-        `${API}?docId=1137&pageIndex=${pageIndex}&pageSize=${PAGE}&pageType=events`,
+      const data = await laterPage(ctx, pageIndex, 1, () =>
+        ctx.http.json<{ items: RgsItem[]; totalItems: number }>(`${API}?docId=1137&pageIndex=${pageIndex}&pageSize=${PAGE}&pageType=events`),
       );
+      if (data === null) break;
       let beyond = 0;
       for (const item of data.items ?? []) {
         const date = parseDate(item.date ?? "");

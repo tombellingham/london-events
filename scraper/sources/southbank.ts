@@ -9,8 +9,9 @@
  * the host is throttled hard and challenged pages are retried in a browser.
  */
 
-import type { LondonDateTime, RawEvent, ScrapeContext, Source } from "../core/types.ts";
-import { configureHost, HttpError } from "../core/http.ts";
+import type { LondonDateTime, RawEvent, Source } from "../core/types.ts";
+import { configureHost } from "../core/http.ts";
+import { fetchHtml, laterPage } from "../core/fetch.ts";
 import { loadHtml } from "../core/html.ts";
 import { clean, speakersFromTitle } from "../core/text.ts";
 import { formatDate, inferYear, isValidDate, monthNumber, parseTime } from "../core/dates.ts";
@@ -43,17 +44,6 @@ export function parseSouthbankDates(text: string, now = new Date()): LondonDateT
   return out;
 }
 
-async function listingHtml(ctx: ScrapeContext, url: string): Promise<string> {
-  try {
-    return await ctx.http.text(url, { allowStatus: [404] });
-  } catch (err) {
-    if (err instanceof HttpError && err.blocked) {
-      ctx.log.warn(`bot check on ${url}; retrying in a browser`);
-      return ctx.browser.html(url, { waitFor: ".c-event-card" });
-    }
-    throw err;
-  }
-}
 
 export const southbank: Source = {
   id: "southbank",
@@ -63,7 +53,11 @@ export const southbank: Source = {
   async scrape(ctx) {
     const events: RawEvent[] = [];
     for (let page = 1; page <= 12; page++) {
-      const $ = loadHtml(await listingHtml(ctx, LISTING(page)));
+      const html = await laterPage(ctx, page, 1, () =>
+        fetchHtml(ctx, LISTING(page), { http: { allowStatus: [404] }, browser: { waitFor: ".c-event-card" } }),
+      );
+      if (html === null) break;
+      const $ = loadHtml(html);
       const cards = $(".c-event-card");
       if (cards.length === 0) break;
       let beyond = 0;

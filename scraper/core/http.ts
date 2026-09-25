@@ -123,6 +123,12 @@ export function detectBotWall(status: number, body: string): string | null {
   return null;
 }
 
+/** A (small) 2xx body that is a bot-check page rather than content. */
+function isInterstitial(body: string): boolean {
+  if (body.length > 40_000) return false;
+  return /<title>\s*(?:Just a moment|Attention Required|Robot Challenge Screen)|sgcaptcha|Vercel Security Checkpoint/i.test(body.slice(0, 6000));
+}
+
 // ---------------------------------------------------------------------------
 // Dev cache
 // ---------------------------------------------------------------------------
@@ -207,6 +213,11 @@ export class Http {
         gate.release();
       }
 
+      // Some walls answer 2xx with an interstitial (SiteGround: 202 + meta refresh).
+      if (res.status >= 200 && res.status < 300 && isInterstitial(text)) {
+        lastError = new HttpError(`HTTP ${res.status} for ${url} (${detectBotWall(403, text) ?? "bot check"} interstitial)`, res.status, url, true);
+        break;
+      }
       const ok = (res.status >= 200 && res.status < 300) || options.allowStatus?.includes(res.status);
       if (ok) {
         const out: HttpResponse = { status: res.status, url: res.url || url, text, headers: res.headers };

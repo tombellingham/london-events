@@ -11,6 +11,7 @@ import { parseDate, parseTime } from "../core/dates.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, speakersFromTitle } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
+import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://ras.ac.uk";
 
@@ -22,7 +23,9 @@ export const ras: Source = {
   async scrape(ctx) {
     const events: RawEvent[] = [];
     for (let page = 0; page < 12; page++) {
-      const $ = loadHtml(await ctx.http.text(`${SITE}/events-and-meetings?page=${page}`));
+      const html = await laterPage(ctx, page, 0, () => ctx.http.text(`${SITE}/events-and-meetings?page=${page}`));
+      if (html === null) break;
+      const $ = loadHtml(html);
       const rows = $(".view-dates-for-the-dairy .event-iten");
       if (rows.length === 0) break;
       let beyond = 0;

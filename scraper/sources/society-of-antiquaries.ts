@@ -9,6 +9,7 @@ import { parseNaiveLondon } from "../core/dates.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, honorificNames } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
+import { fetchHtml, laterPage } from "../core/fetch.ts";
 
 const SITE = "https://www.sal.org.uk";
 
@@ -21,7 +22,10 @@ export const societyOfAntiquaries: Source = {
     const events: RawEvent[] = [];
     const seen = new Set<string>();
     for (let page = 1; page <= 10; page++) {
-      const $ = loadHtml(await ctx.http.text(`${SITE}/events/${page > 1 ? `page/${page}/` : ""}`, { allowStatus: [404] }));
+      const listing = `${SITE}/events/${page > 1 ? `page/${page}/` : ""}`;
+      const html = await laterPage(ctx, page, 1, () => fetchHtml(ctx, listing, { http: { allowStatus: [404] } }));
+      if (html === null) break;
+      const $ = loadHtml(html);
       const items = $(".sugar-calendar-event-list-block__listview__event");
       if (items.length === 0) break;
       let beyond = 0;
@@ -49,7 +53,7 @@ export const societyOfAntiquaries: Source = {
     }
     const inWindow = events.filter((e) => ctx.inWindow(e.start));
     return enrichAll(ctx, inWindow, 2, async (event) => {
-      const $ = loadHtml(await ctx.http.text(event.url));
+      const $ = loadHtml(await fetchHtml(ctx, event.url));
       const body = $(".sc-frontend-single-event__description, .entry-content, article").first();
       const paras = body.find("p").map((_, p) => clean($(p).text())).get().filter((t) => t.length > 40);
       const text = paras.join(" ");

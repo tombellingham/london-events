@@ -12,6 +12,7 @@ import { parseDate, parseTime } from "../core/dates.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, speakersFromTitle } from "../core/text.ts";
 import { mapSettled } from "../core/async.ts";
+import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://www.tate.org.uk";
 const LISTING = `${SITE}/whats-on?date_range=from_now&event_type=talk&gallery_group=tate-modern&gallery_group=tate-britain`;
@@ -26,7 +27,9 @@ async function listing(ctx: ScrapeContext, base: string): Promise<Card[]> {
   const cards: Card[] = [];
   const seen = new Set<string>();
   for (let page = 1; page <= 10; page++) {
-    const $ = loadHtml(await ctx.http.text(page > 1 ? `${base}&page=${page}` : base));
+    const html = await laterPage(ctx, page, 1, () => ctx.http.text(page > 1 ? `${base}&page=${page}` : base));
+    if (html === null) break;
+    const $ = loadHtml(html);
     const found = $(".card a[href^='/whats-on/']");
     if (found.length === 0) break;
     found.each((_, a) => {

@@ -8,6 +8,9 @@
  *
  *   node scripts/probe.mjs name=https://example.org/events [name2=url2 …]
  *   node scripts/probe.mjs --file targets.txt       # one name=url per line
+ *   name=https://site/page >> https://site/api?x=1  # also fetch URLs from inside
+ *                                                  # the loaded page (same cookies),
+ *                                                  # saved as <name>.fetch-N.txt
  *
  * Env: PROBE_OUT (default ./probe-out), BROWSER_HEADED=1 (run under xvfb-run),
  *      CHROMIUM_PATH (custom browser binary).
@@ -47,7 +50,7 @@ const summary = [];
 for (const spec of specs) {
   const i = spec.indexOf("=");
   const name = spec.slice(0, i);
-  const url = spec.slice(i + 1);
+  const [url, ...fetches] = spec.slice(i + 1).split(/\s+>>\s+/);
   const page = await context.newPage();
   const network = [];
   page.on("response", async (res) => {
@@ -72,6 +75,16 @@ for (const spec of specs) {
     title = await page.title();
     const html = await page.content();
     writeFileSync(join(OUT, `${name}.html`), html);
+    for (const [k, target] of fetches.entries()) {
+      const result = await page
+        .evaluate(async (u) => {
+          const res = await fetch(u, { credentials: "include", headers: { Accept: "application/json, text/plain, */*" } });
+          return `${res.status} ${res.headers.get("content-type")}\n\n${await res.text()}`;
+        }, target)
+        .catch((err) => `ERROR ${err}`);
+      writeFileSync(join(OUT, `${name}.fetch-${k}.txt`), `${target}\n${result}`);
+      console.log(`${name}.fetch-${k}`.padEnd(24), result.split("\n")[0]);
+    }
     writeFileSync(join(OUT, `${name}.network.json`), JSON.stringify(network, null, 1));
     const xhr = network.filter((n) => n.type !== "document").length;
     summary.push({ name, url, status: response?.status(), finalUrl: page.url(), title, bytes: html.length, xhr, ms: Date.now() - started });

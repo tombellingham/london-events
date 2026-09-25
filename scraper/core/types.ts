@@ -82,6 +82,8 @@ export interface Source {
   defaults?: SourceDefaults;
   /** Optional per-source keep/skip filter applied after normalization (e.g. drop internal staff events). */
   include?: (event: EventRecord) => boolean;
+  /** Wall-clock budget for this source (default 4 minutes); browser-heavy sources need more. */
+  timeoutMs?: number;
   scrape: (ctx: ScrapeContext) => Promise<RawEvent[]>;
 }
 

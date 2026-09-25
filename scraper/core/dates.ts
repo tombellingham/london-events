@@ -204,6 +204,15 @@ export function parseDate(text: string, now: Date = new Date()): string | null {
   let m = s.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
   if (m && isValidDate(+m[1], +m[2], +m[3])) return `${m[1]}-${m[2]}-${m[3]}`;
 
+  // Day ranges inside one month ("12–15 July 2027", "28-29 Sept"): the start is the first day.
+  m = s.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*[–—-]\\s*\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH_RE}(?:,?\\s+(\\d{4}))?`, "i"));
+  if (m) {
+    const day = +m[1];
+    const month = monthNumber(m[2])!;
+    const year = m[3] ? +m[3] : inferYear(month, day, now);
+    if (isValidDate(year, month, day)) return formatDate(year, month, day);
+  }
+
   m = s.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?[\\s-]+${MONTH_RE}(?:,?[\\s-]+(\\d{4}))?`, "i"));
   if (m) {
     const day = +m[1];

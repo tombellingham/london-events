@@ -12,6 +12,7 @@ import { absUrl, loadHtml } from "../core/html.ts";
 import { clean, honorificNames, speakersFromPhrase, uniqNames } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
 import { configureHost } from "../core/http.ts";
+import { laterPage } from "../core/fetch.ts";
 
 configureHost("royalsociety.org", { concurrency: 1, intervalMs: 1500 });
 
@@ -29,7 +30,10 @@ export const royalSociety: Source = {
     for (const listing of LISTINGS) {
       let url: string | null = listing;
       for (let page = 1; url && page <= 10; page++) {
-        const $ = loadHtml(await ctx.http.text(url));
+        const pageUrl = url;
+        const html = await laterPage(ctx, page, 1, () => ctx.http.text(pageUrl));
+        if (html === null) break;
+        const $ = loadHtml(html);
         $("a.card__link").each((_, el) => {
           const card = $(el);
           const href = absUrl(card.attr("href"), SITE);

@@ -11,6 +11,7 @@ import { parseIsoAsLondonWallClock } from "../core/dates.ts";
 import { loadHtml } from "../core/html.ts";
 import { clean } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
+import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://thecharterhouse.org";
 const PPP = 50;
@@ -37,7 +38,8 @@ export const charterhouse: Source = {
     const from = Math.floor(ctx.horizon.from.getTime() / 1000);
     const events: RawEvent[] = [];
     for (let page = 1; page <= 20; page++) {
-      const data = await ctx.http.json<{ results: ChEvent[]; total: number }>(`${SITE}/wp-json/custom/events/?from=${from}&ppp=${PPP}&page=${page}`);
+      const data = await laterPage(ctx, page, 1, () => ctx.http.json<{ results: ChEvent[]; total: number }>(`${SITE}/wp-json/custom/events/?from=${from}&ppp=${PPP}&page=${page}`));
+      if (data === null) break;
       for (const e of data.results ?? []) {
         const start = wallClock(e.startDate);
         if (!start) continue;

@@ -153,3 +153,16 @@ export function isOutsideLondon(location: string | null | undefined): boolean {
   }
   return false;
 }
+
+/**
+ * True when a location positively names London (a Greater London postcode,
+ * "London", or a well-known London district). Stricter than
+ * !isOutsideLondon(): for national sources whose venues can be anywhere.
+ */
+export function isInLondon(location: string | null | undefined): boolean {
+  const loc = clean(location);
+  if (!loc) return false;
+  const postcode = loc.match(/\b([A-Z]{1,2})\d[A-Z\d]?\s*\d[ABD-HJLNP-UW-Z]{2}\b/);
+  if (postcode) return LONDON_POSTCODE_AREAS.has(postcode[1]);
+  return LONDON_RE.test(loc);
+}

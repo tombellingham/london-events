@@ -10,6 +10,7 @@ import { hasType, jsonLdNodes, loadHtml, nextData } from "./html.ts";
 import { clean } from "./text.ts";
 import { parseIsoInstant } from "./dates.ts";
 import { enrichAll } from "./async.ts";
+import { laterPage } from "./fetch.ts";
 
 interface EbVenue {
   name?: string;
@@ -91,10 +92,12 @@ export async function scrapeEventbriteOrganizer(
   try {
     for (let page = 1; page <= 15; page++) {
       const params = new URLSearchParams({ from_date: ctx.horizon.fromDate, page: String(page), page_size: "20", order_by: "start_asc", include_started: "true" });
-      const data = await ctx.http.json<{ events?: EbEvent[]; has_more?: boolean }>(
-        `${origin}/organizer-profile/api/organizers/${organizerId}/events-from-date/?${params}`,
-        { headers: { Referer: organizerUrl } },
+      const data = await laterPage(ctx, page, 1, () =>
+        ctx.http.json<{ events?: EbEvent[]; has_more?: boolean }>(`${origin}/organizer-profile/api/organizers/${organizerId}/events-from-date/?${params}`, {
+          headers: { Referer: organizerUrl },
+        }),
       );
+      if (data === null) break;
       const events = data.events ?? [];
       raw.push(...events);
       const last = events.at(-1)?.start_date;

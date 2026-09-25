@@ -13,6 +13,7 @@ import { parseNaiveLondon } from "../core/dates.ts";
 import { absUrl, loadHtml } from "../core/html.ts";
 import { clean } from "../core/text.ts";
 import { enrichAll } from "../core/async.ts";
+import { laterPage } from "../core/fetch.ts";
 
 const SITE = "https://www.conwayhall.org.uk";
 const VENUE = "Conway Hall, 25 Red Lion Square, WC1R 4RL";
@@ -42,7 +43,9 @@ export const conwayHall: Source = {
     const seen = new Set<string>();
     for (let page = 1; page <= 10; page++) {
       const url = page === 1 ? `${SITE}/whats-on/` : `${SITE}/whats-on/page/${page}/`;
-      const $ = loadHtml(await ctx.http.text(url, { allowStatus: [404] }));
+      const html = await laterPage(ctx, page, 1, () => ctx.http.text(url, { allowStatus: [404] }));
+      if (html === null) break;
+      const $ = loadHtml(html);
       const cards = $("conwayhall-event");
       if (cards.length === 0) break;
       let beyond = 0;

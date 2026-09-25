@@ -102,7 +102,8 @@ export class BrowserPool {
       const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout });
       await waitForChallenge(page, url, timeout);
       if (options.waitFor) {
-        await page.waitForSelector(options.waitFor, { timeout: Math.min(timeout, 25_000) }).catch(() => undefined);
+        // "attached", not "visible": we only need the markup (and <script> JSON-LD is never visible).
+        await page.waitForSelector(options.waitFor, { state: "attached", timeout: Math.min(timeout, 25_000) }).catch(() => undefined);
       } else {
         await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
       }
@@ -121,6 +122,37 @@ export class BrowserPool {
   /** Rendered HTML of a page. */
   async html(url: string, options?: PageOptions): Promise<string> {
     return this.withPage(url, (page) => page.content(), options);
+  }
+
+  /**
+   * Opens a JSON URL directly and parses the body. Polls rather than parsing
+   * once, because some bot checks (SiteGround's proof-of-work) bounce through
+   * an interstitial page before redirecting back to the real response.
+   */
+  async json<T = unknown>(url: string, options: PageOptions = {}): Promise<T> {
+    return this.withPage(
+      url,
+      async (page) => {
+        const deadline = Date.now() + (options.timeoutMs ?? 30_000);
+        for (;;) {
+          const text = await page.evaluate(() => document.body?.innerText ?? "").catch(() => "");
+          const trimmed = text.trim();
+          if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+            try {
+              return JSON.parse(trimmed) as T;
+            } catch {
+              /* still loading */
+            }
+          }
+          if (Date.now() > deadline) {
+            const wall = detectBotWall(403, await page.content().catch(() => ""));
+            throw new HttpError(`Expected JSON from ${url} (browser${wall ? `, ${wall}` : ""})`, 0, url, Boolean(wall));
+          }
+          await page.waitForTimeout(1000);
+        }
+      },
+      options,
+    );
   }
 
   /**

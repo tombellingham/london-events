@@ -1,21 +1,12 @@
-britac-list=https://www.thebritishacademy.ac.uk/events/
-britac-ev=https://www.thebritishacademy.ac.uk/events/searching-for-wellness/unheard-untreated-unwell-womens-health-in-crisis/
-sas-list=https://www.sas.ac.uk/news-events/events
-rsc-find=https://www.rsc.org/events/find-an-event
-rsc-uk=https://www.rsc.org/events/find-an-event/uk-and-ireland-events
-iop-london=https://www.iop.org/events?event_location[5760]=5760&event_location[5774]=5774
-iop-ev=https://www.iop.org/events/frontiers-physics-2026
-ra-talks=https://www.royalacademy.org.uk/exhibitions-and-events?what-filter=talks-lectures
-ra-ev=https://www.royalacademy.org.uk/event/curator-talk-painting-the-french-riviera
-iq2-attend=https://www.intelligencesquared.com/attend
-iq2-ev=https://www.intelligencesquared.com/events/a-new-history-of-our-future-with-peter-frankopan
-iq2-types=https://www.intelligencesquared.com/wp-json/wp/v2/types
-pok-list=https://www.tickettailor.com/events/pintsofknowledge
-pok-ev=https://www.tickettailor.com/events/pintsofknowledge/2339777
-hlsi-api=https://hlsi.org.uk/wp-json/tribe/events/v1/events?per_page=50&start_date=2026-09-25
-hlsi-cats=https://hlsi.org.uk/wp-json/tribe/events/v1/categories?per_page=100
+# Second GH probe: things the first run couldn't settle.
+sas-api=https://www.sas.ac.uk/news-events/events >> https://www.sas.ac.uk/api/listing/15886?sort%5Bstart_date%5D%5Bpath%5D=start_date&sort%5Bstart_date%5D%5Bdirection%5D=asc >> https://www.sas.ac.uk/api/listing/15886?sort%5Bstart_date%5D%5Bpath%5D=start_date&sort%5Bstart_date%5D%5Bdirection%5D=asc&page=1
+britac-home=https://www.thebritishacademy.ac.uk/
+britac-list=https://www.thebritishacademy.ac.uk/events/ >> https://www.thebritishacademy.ac.uk/api/v2/filter/events/?fields=*&page=2&results=12
+iop-list=https://www.iop.org/events
+iop-london=https://www.iop.org/events?event_location%5B0%5D=5760
+rsm-home=https://www.rsm.ac.uk/
 rsm-list=https://www.rsm.ac.uk/events/
-rsm-wayback=https://web.archive.org/web/2026/https://www.rsm.ac.uk/events/
+southbank-p1=https://www.southbankcentre.co.uk/whats-on/?artform-filter=talks-debates
 southbank-p2=https://www.southbankcentre.co.uk/whats-on/page/2/?artform-filter=talks-debates
-southbank-ev=https://www.southbankcentre.co.uk/whats-on/brutalism-love-and-hate/
-royalsoc-public=https://royalsociety.org/science-events-and-lectures/public/
+pok-p2=https://www.tickettailor.com/events/pintsofknowledge?page=2
+iq2-tour=https://www.intelligencesquared.com/events/an-evening-with-tim-spector

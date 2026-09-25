@@ -78,12 +78,32 @@ export function uniqNames(names: Iterable<string>): string[] {
   for (const raw of names) {
     const name = cleanName(raw);
     if (!name) continue;
-    const key = name.toLowerCase();
-    if (out.some((n) => n.toLowerCase() === key || key.startsWith(`${n.toLowerCase()} `))) continue;
-    for (let i = out.length - 1; i >= 0; i--) if (out[i].toLowerCase().startsWith(`${key} `)) out.splice(i, 1);
+    const key = nameKey(name);
+    if (!key) continue;
+    const same = out.findIndex((n) => nameKey(n) === key);
+    if (same >= 0) {
+      // "Ben Okri" then "Sir Ben Okri": keep the fuller form, in the first one's place.
+      if (name.length > out[same].length) out[same] = name;
+      continue;
+    }
+    if (out.some((n) => key.startsWith(`${nameKey(n)} `))) continue;
+    for (let i = out.length - 1; i >= 0; i--) if (nameKey(out[i]).startsWith(`${key} `)) out.splice(i, 1);
     out.push(name);
   }
   return out;
+}
+
+const LEADING_HONORIFICS = /^(?:(?:professor|prof|dr|sir|dame|lord|lady|baroness|baron|rev(?:erend)?|rt\.? hon|the hon|mr|mrs|ms|mx|miss)\.?\s+)+/i;
+
+/** Comparison key for a person's name: no honorifics, accents or case. */
+function nameKey(name: string): string {
+  return name
+    .replace(LEADING_HONORIFICS, "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /** Splits "A, B and C" / "A & B" into names. */
@@ -107,8 +127,11 @@ export function speakersFromPhrase(text: string): string[] {
     .replace(/\s*[.;]\s*$/, "");
   const names: string[] = [];
   const conv = t.match(/^(.+?)\s+in conversation with\s+(.+)$/i);
+  const solo = t.match(/^(.+?)\s+in conversation$/i);
   if (conv) {
     names.push(...splitNames(conv[1].replace(/^.*:\s*/, "")), ...splitNames(conv[2]));
+  } else if (solo) {
+    names.push(...splitNames(solo[1].replace(/^.*:\s*/, "")));
   } else {
     const withMatch = t.match(/\b(?:an? (?:evening|afternoon|morning|night|audience) with|in conversation with|hosted by|chaired by|with)\s+(.+)$/i);
     if (withMatch) names.push(...splitNames(withMatch[1]));
