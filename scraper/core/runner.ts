@@ -157,6 +157,9 @@ export async function runSources(sources: Source[], options: RunOptions): Promis
     for (const [i, source] of sources.entries()) {
       if (!results[i].blocked) continue;
       if (!options.quiet) console.log(`↻ ${source.name}: retrying alone after a bot check`);
+      // A freshly launched browser: checks that never clear in the long-lived
+      // shared one routinely pass in a new one.
+      await closeBrowser();
       const again = await runOne(source, horizon, options);
       report(source, again);
       const better = again.health.status === "ok" && (results[i].health.status !== "ok" || again.events.length > results[i].events.length);

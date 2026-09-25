@@ -1,4 +1,0 @@
-# Fourth GH probe: are the sites the scraper fails on reachable on their own?
-iop-list=https://www.iop.org/events
-pok-list=https://www.tickettailor.com/events/pintsofknowledge
-sas-list=https://www.sas.ac.uk/news-events/events
