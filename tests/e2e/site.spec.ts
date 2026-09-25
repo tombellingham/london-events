@@ -47,6 +47,8 @@ test("shows the event details a reader needs", async ({ page }) => {
   await expect(online.locator(".event__meta")).toContainText("Online");
   await expect(online.locator(".event__meta")).toContainText("Free");
   await expect(page.locator(".event", { hasText: "Élan vital" }).locator(".event__also")).toContainText("Also listed by Alpha Institute");
+  await page.getByRole("button", { name: "Next 30 days" }).click();
+  await expect(page.locator(".event", { hasText: "Autumn lecture" }).locator(".event__meta")).toContainText("Free");
 });
 
 test("time windows", async ({ page }) => {
@@ -59,7 +61,8 @@ test("time windows", async ({ page }) => {
   await expect(page.locator(".event__title")).toHaveText(["Online seminar: stars", "All-day symposium on soil"]);
 
   await page.getByRole("button", { name: "Next 30 days" }).click();
-  await expect(count(page)).toHaveText("6 events in the next 30 days");
+  await expect(count(page)).toHaveText("7 events in the next 30 days");
+  await expect(page.locator(".event", { hasText: "Paid talk without a listed price" }).locator(".event__meta")).toContainText("Paid");
   await expect(page.locator(".event__title", { hasText: "Beyond the thirty-day window" })).toHaveCount(0);
 });
 
@@ -133,4 +136,16 @@ test("raw data is published alongside the page", async ({ page, request }) => {
     expect(res.ok()).toBe(true);
     expect(await res.json()).toBeTruthy();
   }
+});
+
+test("warns when the data is stale", async ({ page }) => {
+  await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await page.clock.setFixedTime(new Date(NOW.getTime() + 3 * 24 * 3600 * 1000));
+  await page.goto("/");
+  await expect(page.locator(".health-stale")).toHaveText("Data is 3 days old");
+});
+
+test("fresh data carries no staleness warning", async ({ page }) => {
+  await open(page);
+  await expect(page.locator(".health-stale")).toHaveCount(0);
 });

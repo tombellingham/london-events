@@ -226,6 +226,7 @@
     if (e.online === true) meta.push('<span class="tag tag--online">Online</span>');
     if (e.free === true) meta.push('<span class="tag tag--free">Free</span>');
     else if (e.price) meta.push('<span class="tag">' + esc(shortPrice(e.price)) + "</span>");
+    else if (e.free === false) meta.push('<span class="tag">Paid</span>');
     var past = e.date === now.date && e.time && e.time < now.time;
     var html =
       '<article class="event' + (past ? " event--past" : "") + '">' +
@@ -465,6 +466,27 @@
     });
   }
 
+  // A daily scrape that has stopped deploying should be obvious, not silent.
+  function flagStaleData() {
+    var age = Date.now() - Date.parse(DATA.generatedAt || "");
+    if (!(age > 36 * 3600 * 1000)) return;
+    var days = Math.floor(age / (24 * 3600 * 1000));
+    var el = document.createElement("span");
+    el.className = "health-stale";
+    el.textContent = "Data is " + (days === 1 ? "a day" : days + " days") + " old";
+    var sep = document.createElement("span");
+    sep.className = "sep";
+    sep.textContent = "·";
+    var line = document.getElementById("health-summary");
+    line.insertBefore(sep, line.firstChild);
+    line.insertBefore(el, line.firstChild);
+  }
+
+  // Phones: start with the source list folded unless some sources are switched off.
+  var picker = document.getElementById("source-picker");
+  if (picker && window.matchMedia("(max-width: 560px)").matches && !state.off.length) picker.removeAttribute("open");
+
+  flagStaleData();
   renderHistory();
   render();
 })();

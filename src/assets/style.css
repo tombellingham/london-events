@@ -566,3 +566,32 @@ mark {
     display: none;
   }
 }
+
+.health-stale {
+  color: var(--error);
+  font-weight: 600;
+}
+
+/* The source list is long: on phones it folds away behind a toggle. */
+.source-picker > summary {
+  display: none;
+}
+@media (max-width: 560px) {
+  .source-picker > summary {
+    display: inline-block;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--rule);
+    list-style: none;
+    margin-bottom: 0.4rem;
+  }
+  .source-picker > summary::-webkit-details-marker {
+    display: none;
+  }
+  .source-picker > summary::after {
+    content: " +";
+  }
+  .source-picker[open] > summary::after {
+    content: " −";
+  }
+}

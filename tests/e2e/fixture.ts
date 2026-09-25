@@ -42,6 +42,7 @@ export const events = [
   event("alpha", "2026-10-02", null, "All-day symposium on soil", { free: true }),
   event("beta", "2026-10-06", "19:00", "Élan vital: a talk on Bergson", { free: false, price: "£12", alsoAt: [{ source: "alpha", url: "https://alpha.example/events/elan" }] }),
   event("alpha", "2026-10-20", "18:00", "Autumn lecture", { free: true }),
+  event("beta", "2026-10-21", "19:00", "Paid talk without a listed price", { free: false }),
   event("beta", "2026-11-15", "19:00", "Beyond the thirty-day window", { free: false }),
 ].sort((a, b) => a.start.localeCompare(b.start));
 

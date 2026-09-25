@@ -77,7 +77,7 @@ page has per-source detail and history. The run history lives in the published
 | Guildhall Library | Eventbrite organiser API |
 | Highgate Literary & Scientific Institution | The Events Calendar REST API; courses and classes excluded |
 | How To Academy | Events calendar + event/tour pages (London dates only) |
-| Imperial College London | Events feed (public-facing types) |
+| Imperial College London | What's On events feed (talk-like types only) |
 | Institute of Physics | Events listing (paginated) + event pages; online or in London only |
 | Intelligence Squared | Attend page + event pages (tour dates: London only) |
 | King's College London | Site's Contensis content API (public lectures, seminars, …) |
@@ -153,6 +153,9 @@ Useful environment variables:
   automated visitors), so only talks sold through Eventbrite appear.
 - **UCL** is read from its public events feed, since ucl.ac.uk blocks
   automated visitors; it covers public-audience events only.
-- Some sources don't publish everything: Southbank and Tate give no speakers,
-  Tate gives no prices for paid events, and RSC/IOP event pages rarely give
-  prices. These fields are left empty rather than guessed.
+- Some sources don't publish everything. Barbican and Tate load prices in
+  the browser from their box offices: Barbican events count as paid unless
+  the text says free, and Tate's free events come from its own "free"
+  filter, without prices for the rest. RSC and IOP rarely give prices,
+  Southbank never names speakers. Missing fields are left empty rather than
+  guessed, and an unknown price matches neither the Free nor the Paid filter.

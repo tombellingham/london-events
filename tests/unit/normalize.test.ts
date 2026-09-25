@@ -45,6 +45,11 @@ describe("normalizeEvent", () => {
     assert.equal(e.online, false);
     assert.match(e.id, /^[0-9a-f]{12}$/);
   });
+  it("treats a midnight start as 'no time given'", () => {
+    const result = normalizeEvent(raw({ start: { date: "2026-10-12", time: "00:00" } }), source, horizon);
+    assert.ok(result.ok);
+    assert.equal(result.event.time, null);
+  });
   it("accepts instants and converts them to London time", () => {
     const result = normalizeEvent(raw({ start: new Date("2026-10-26T19:00:00Z") }), source, horizon); // GMT by then
     assert.ok(result.ok);

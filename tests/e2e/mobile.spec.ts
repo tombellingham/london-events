@@ -10,4 +10,8 @@ test("works on a phone without sideways scrolling", async ({ page }) => {
   expect(overflow).toBeLessThanOrEqual(0);
   await page.getByRole("button", { name: "Tomorrow" }).tap();
   await expect(page.locator(".event")).toHaveCount(2);
+  // The long source list starts folded on phones.
+  await expect(page.locator("#source-list")).toBeHidden();
+  await page.getByText("Choose sources").tap();
+  await expect(page.locator("#source-list")).toBeVisible();
 });

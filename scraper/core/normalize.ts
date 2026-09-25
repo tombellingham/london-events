@@ -112,8 +112,10 @@ export function normalizeEvent(raw: RawEvent, source: Source, horizon: Horizon):
   const url = absoluteUrl(raw.url ?? "");
   if (!url) return { ok: false, reason: "invalid", detail: `bad url for "${title}"` };
 
-  const start = asLondon(raw.start);
-  if (!start) return { ok: false, reason: "invalid", detail: `bad date for "${title}"` };
+  const parsed = asLondon(raw.start);
+  if (!parsed) return { ok: false, reason: "invalid", detail: `bad date for "${title}"` };
+  // Midnight is what CMSs store for "no time given"; no talk starts at 00:00.
+  const start: LondonDateTime = parsed.time === "00:00" ? { date: parsed.date, time: null } : parsed;
 
   const end = asLondon(raw.end ?? null);
   if (end && daysBetween(start.date, end.date) > MAX_SPAN_DAYS) {

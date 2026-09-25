@@ -64,11 +64,14 @@ permalink: index.html
       </div>
       <div class="filter filter--sources" id="sources">
         <h2 class="label">Sources <span class="label__aside" id="sources-count"></span></h2>
-        <div class="source-actions"><button type="button" data-sources="all">All</button><span class="sep">·</span><button type="button" data-sources="none">None</button></div>
-        <ul class="source-list" id="source-list">
-          {% for s in site.sources %}<li><label class="source source--{{ s.status }}"><input type="checkbox" value="{{ s.id }}" checked><span class="source__name">{{ s.name }}</span></label></li>
-          {% endfor %}
-        </ul>
+        <details class="source-picker" id="source-picker" open>
+          <summary>Choose sources</summary>
+          <div class="source-actions"><button type="button" data-sources="all">All</button><span class="sep">·</span><button type="button" data-sources="none">None</button></div>
+          <ul class="source-list" id="source-list">
+            {% for s in site.sources %}<li><label class="source source--{{ s.status }}"><input type="checkbox" value="{{ s.id }}" checked><span class="source__name">{{ s.name }}</span></label></li>
+            {% endfor %}
+          </ul>
+        </details>
       </div>
     </section>
 

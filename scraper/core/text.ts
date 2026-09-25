@@ -250,13 +250,29 @@ export function speakersFromTitle(title: string, context?: string | null): strin
  * Faraday FSA…", "Professor Kayla King will explore…". High precision, so
  * it's safe to run over descriptions.
  */
-export function honorificNames(text: string | null | undefined): string[] {
-  const t = clean(text);
+export function honorificNames(text: string | null | undefined, maxChars = 400): string[] {
+  // Speakers are introduced early; further in, descriptions name the people
+  // the talk is *about* ("…founded by Sir John Beddington, who…").
+  const t = clean(text).slice(0, maxChars);
   const out: string[] = [];
   const re = /\b((?:Professor|Prof\.?|Dr\.?|Sir|Dame|Lord|Lady|Baroness|Baron|Rev(?:erend)?\.?|Rt\.? Hon\.?)(?:\s+(?:Sir|Dame|Dr\.?|Professor))?\s+[A-Z][\p{L}'’-]+(?:\s+(?:[A-Z][\p{L}'’-]+|van|von|de|der|da|di|du|la|le|al|el|bin|ibn)){0,4})/gu;
   for (const m of t.matchAll(re)) {
-    const name = m[1].replace(/\s+(?:FSA|FRS|FBA|FRSE|FLS|FRAS|OBE|MBE|CBE|KBE|DBE|PhD|MP)$/g, "");
+    const name = dedupeNameWords(m[1].replace(/\s+(?:FSA|FRS|FBA|FRSE|FLS|FRAS|OBE|MBE|CBE|KBE|DBE|PhD|MP)$/g, ""));
     if (looksLikeName(name)) out.push(name);
   }
   return uniqNames(out);
+}
+
+/**
+ * Trims run-on captures from name lists without separators: "Dr Ke Zhu Ke Zhu"
+ * → "Dr Ke Zhu", "Dr Ualisson Bellon Dr Ualisson" → "Dr Ualisson Bellon".
+ */
+function dedupeNameWords(name: string): string {
+  const words = name.split(/\s+/);
+  const lead = words.findIndex((w) => !/^(?:Professor|Prof\.?|Dr\.?|Sir|Dame|Lord|Lady|Baroness|Baron|Rev(?:erend)?\.?|Rt\.?|Hon\.?)$/.test(w));
+  for (let i = Math.max(lead, 0) + 1; i < words.length; i++) {
+    // A second honorific, or the name starting over, ends the first name.
+    if (/^(?:Professor|Prof\.?|Dr\.?|Sir|Dame)$/.test(words[i]) || (words[i] === words[lead] && i > lead)) return words.slice(0, i).join(" ");
+  }
+  return name;
 }
