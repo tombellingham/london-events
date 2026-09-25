@@ -399,89 +399,9 @@
     }
   });
 
-  // ---------------------------------------------------------------------------
-  // Health sparklines (run history)
-
-  function spark(values, classes, title) {
-    var max = Math.max.apply(null, values.concat([1]));
-    return values
-      .map(function (v, i) {
-        var h = v < 0 ? 100 : Math.max(8, Math.round((v / max) * 100));
-        return '<i class="' + (classes[i] || "") + '" style="height:' + h + '%" title="' + esc(title(i)) + '"></i>';
-      })
-      .join("");
-  }
-
-  function renderHistory() {
-    var runs = (DATA.history || []).slice(-30);
-    if (!runs.length) return;
-    var fmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", day: "numeric", month: "short" });
-    var el = document.getElementById("history-spark");
-    if (el) {
-      el.innerHTML = spark(
-        runs.map(function (r) {
-          return r.events;
-        }),
-        runs.map(function (r, i) {
-          return (r.failed ? "bad" : r.empty ? "warn" : "") + (i === runs.length - 1 ? " last" : "");
-        }),
-        function (i) {
-          var r = runs[i];
-          return fmt.format(new Date(r.at)) + ": " + r.events + " events, " + r.ok + " ok, " + r.empty + " empty, " + r.failed + " failed";
-        },
-      );
-      el.setAttribute("title", "Events found on the last " + runs.length + " runs");
-      el.removeAttribute("aria-hidden");
-      el.setAttribute("role", "img");
-      el.setAttribute("aria-label", "Events found on the last " + runs.length + " runs");
-    }
-    document.querySelectorAll("[data-runs]").forEach(function (cell) {
-      var id = cell.getAttribute("data-runs");
-      // Runs from before a source existed have no entry for it; skip those.
-      var known = runs.filter(function (r) {
-        return r.counts && id in r.counts;
-      });
-      if (!known.length) return;
-      var counts = known.map(function (r) {
-        return r.counts[id];
-      });
-      cell.innerHTML =
-        '<span class="spark">' +
-        spark(
-          counts,
-          counts.map(function (c) {
-            return c < 0 ? "bad" : c === 0 ? "warn" : "";
-          }),
-          function (i) {
-            var c = counts[i];
-            return fmt.format(new Date(known[i].at)) + ": " + (c < 0 ? "failed" : c + " events");
-          },
-        ) +
-        "</span>";
-    });
-  }
-
-  // A daily scrape that has stopped deploying should be obvious, not silent.
-  function flagStaleData() {
-    var age = Date.now() - Date.parse(DATA.generatedAt || "");
-    if (!(age > 36 * 3600 * 1000)) return;
-    var days = Math.floor(age / (24 * 3600 * 1000));
-    var el = document.createElement("span");
-    el.className = "health-stale";
-    el.textContent = "Data is " + (days === 1 ? "a day" : days + " days") + " old";
-    var sep = document.createElement("span");
-    sep.className = "sep";
-    sep.textContent = "·";
-    var line = document.getElementById("health-summary");
-    line.insertBefore(sep, line.firstChild);
-    line.insertBefore(el, line.firstChild);
-  }
-
   // Phones: start with the source list folded unless some sources are switched off.
   var picker = document.getElementById("source-picker");
   if (picker && window.matchMedia("(max-width: 560px)").matches && !state.off.length) picker.removeAttribute("open");
 
-  flagStaleData();
-  renderHistory();
   render();
 })();

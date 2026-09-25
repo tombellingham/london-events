@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { NOW } from "./fixture.ts";
 
+/** Opens a page of the fixture site ("" = the events page, "status/", or a "?query"). */
 async function open(page: Page, query = ""): Promise<string[]> {
   const errors: string[] = [];
   page.on("pageerror", (err) => errors.push(String(err)));
@@ -115,19 +116,47 @@ test("filters are shareable through the URL", async ({ page }) => {
   await expect(page.locator(".event__title")).toHaveText(["Élan vital: a talk on Bergson"]);
 });
 
-test("health indicators in the header and the status table", async ({ page }) => {
+test("the events page shows when it was updated, and no other status", async ({ page }) => {
   await open(page);
+  await expect(page.locator("#updated")).toHaveText("Updated Thu 1 Oct, 05:30");
+  await expect(page.getByText(/\bok\b|failed/)).toHaveCount(0);
+  await expect(page.locator(".health-pill, .spark, .health-table")).toHaveCount(0);
+  await expect(page.locator(".source", { hasText: "Gamma College" })).toHaveAttribute("class", "source");
+  await page.getByRole("link", { name: "Scraper status and raw data" }).click();
+  await expect(page).toHaveURL(/\/status\/$/);
+  await expect(page.getByRole("heading", { name: "Status", level: 1 })).toBeVisible();
+});
+
+test("the status page: totals, per-source detail and recent runs", async ({ page }) => {
+  const errors = await open(page, "status/");
   const header = page.locator("#health-summary");
+  await expect(header).toContainText("Updated Thu 1 Oct, 05:30");
+  await expect(header).toContainText("took 2 min 0 s");
   await expect(header).toContainText("2 ok");
   await expect(header).toContainText("1 failed");
   await expect(page.locator("#history-spark i")).toHaveCount(3);
-  const row = page.locator(".health-row", { hasText: "Gamma College" });
-  await expect(row).toContainText("failed");
-  await expect(row).toContainText("Blocked by Cloudflare bot protection");
-  await expect(row).toContainText("Showing its events from the last good run, Tue 29 Sept.");
-  await expect(row.locator("td.num").first()).toHaveText("1");
-  await expect(page.locator(".health-row", { hasText: "Alpha Institute" }).locator(".runs i")).toHaveCount(3);
-  await expect(page.locator(".source--error", { hasText: "Gamma College" })).toBeVisible();
+  await expect(page.locator(".health-row")).toHaveCount(3);
+
+  const gamma = page.locator(".health-row", { hasText: "Gamma College" });
+  await expect(gamma).toContainText("failed");
+  await expect(gamma).toContainText("Blocked by Cloudflare bot protection");
+  await expect(gamma).toContainText("Listing its events from the last good run, Tue 29 Sept.");
+  await expect(gamma.locator("td.num").first()).toHaveText("1");
+
+  const alpha = page.locator(".health-row", { hasText: "Alpha Institute" });
+  await expect(alpha.locator(".runs i")).toHaveCount(3);
+  await expect(alpha.locator("td.num").nth(1)).toHaveAttribute("title", "Dropped: online-only 2, past 1");
+
+  const beta = page.locator(".health-row", { hasText: "The Beta Society" });
+  await beta.getByText("1 warning").click();
+  await expect(beta).toContainText("stopped paginating at page 2: HTTP 500");
+
+  await page.getByRole("link", { name: "health.json" }).click();
+  await expect(page).toHaveURL(/\/data\/health\.json$/);
+  await page.goBack();
+  await page.getByRole("link", { name: "Events", exact: true }).click();
+  await expect(page.locator("#result-count")).toHaveText("5 events in the next 7 days");
+  expect(errors).toEqual([]);
 });
 
 test("raw data is published alongside the page", async ({ page, request }) => {
@@ -139,11 +168,13 @@ test("raw data is published alongside the page", async ({ page, request }) => {
   }
 });
 
-test("warns when the data is stale", async ({ page }) => {
+test("warns when the data is stale, on both pages", async ({ page }) => {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
   await page.clock.setFixedTime(new Date(NOW.getTime() + 3 * 24 * 3600 * 1000));
   await page.goto("/");
-  await expect(page.locator(".health-stale")).toHaveText("Data is 3 days old");
+  await expect(page.locator("#updated .health-stale")).toHaveText("Data is 3 days old");
+  await page.goto("/status/");
+  await expect(page.locator("#health-summary .health-stale")).toHaveText("Data is 3 days old");
 });
 
 test("fresh data carries no staleness warning", async ({ page }) => {

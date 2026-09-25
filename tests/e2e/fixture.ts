@@ -59,8 +59,8 @@ export const health = {
   horizonDays: 45,
   totals: { sources: 3, ok: 2, empty: 0, failed: 1, events: events.length, duplicatesRemoved: 1 },
   sources: [
-    { id: "alpha", name: "Alpha Institute", homepage: sources[0].homepage, status: "ok", error: null, scraped: 6, kept: count("alpha"), count: count("alpha"), dropped: {}, dropSamples: [], requests: 3, durationMs: 1200, warnings: [], lastOkAt: "2026-10-01T04:30:00.000Z", carried: 0 },
-    { id: "beta", name: "The Beta Society", homepage: sources[1].homepage, status: "ok", error: null, scraped: 3, kept: count("beta"), count: count("beta"), dropped: {}, dropSamples: [], requests: 2, durationMs: 800, warnings: [], lastOkAt: "2026-10-01T04:30:00.000Z", carried: 0 },
+    { id: "alpha", name: "Alpha Institute", homepage: sources[0].homepage, status: "ok", error: null, scraped: 6, kept: count("alpha"), count: count("alpha"), dropped: { "online-only": 2, past: 1 }, dropSamples: [], requests: 3, durationMs: 1200, warnings: [], lastOkAt: "2026-10-01T04:30:00.000Z", carried: 0 },
+    { id: "beta", name: "The Beta Society", homepage: sources[1].homepage, status: "ok", error: null, scraped: 3, kept: count("beta"), count: count("beta"), dropped: {}, dropSamples: [], requests: 2, durationMs: 800, warnings: ["stopped paginating at page 2: HTTP 500"], lastOkAt: "2026-10-01T04:30:00.000Z", carried: 0 },
     { id: "gamma", name: "Gamma College", homepage: sources[2].homepage, status: "error", error: "Blocked by Cloudflare bot protection", scraped: 0, kept: 0, count: count("gamma"), dropped: {}, dropSamples: [], requests: 1, durationMs: 35000, warnings: [], lastOkAt: "2026-09-29T04:30:00.000Z", carried: count("gamma") },
   ],
 };

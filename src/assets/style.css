@@ -152,6 +152,9 @@ h1 {
   margin: 0 0 2rem;
   row-gap: 0.25rem;
 }
+.health-line--summary {
+  margin-bottom: 1rem;
+}
 
 .dot {
   display: inline-block;
@@ -326,20 +329,6 @@ h1 {
   margin-left: 0.2rem;
   font-variant-numeric: tabular-nums;
 }
-.source--error .source__name::after,
-.source--empty .source__name::after {
-  content: "";
-  display: inline-block;
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  margin-left: 0.3rem;
-  vertical-align: 0.15em;
-  background: var(--error);
-}
-.source--empty .source__name::after {
-  background: var(--empty);
-}
 
 /* --- Event list -------------------------------------------------------- */
 
@@ -473,7 +462,7 @@ mark {
   border-bottom: 1px solid currentColor;
 }
 
-/* --- Health table ------------------------------------------------------ */
+/* --- Status page ------------------------------------------------------- */
 
 .section-title {
   font-family: var(--font-serif);
@@ -523,11 +512,41 @@ mark {
   color: var(--text-secondary);
   font-size: 0.75rem;
 }
+.health-row__warnings {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.health-row__warnings summary {
+  cursor: pointer;
+  color: var(--empty);
+}
+.health-row__warnings ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1rem;
+  word-break: break-word;
+}
 .runs {
   white-space: nowrap;
 }
 .runs .spark {
   height: 12px;
+}
+.data-files {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  padding-left: 1.1rem;
+  margin: 0;
+}
+.data-files li + li {
+  margin-top: 0.3rem;
+}
+.data-files a,
+.colophon a {
+  border-bottom: 1px solid var(--rule);
+}
+.data-files a:hover,
+.colophon a:hover {
+  border-bottom-color: currentColor;
 }
 
 .colophon {
@@ -563,7 +582,7 @@ mark {
     column-gap: 0.7rem;
   }
   .health-table .runs,
-  .health-table th:last-child {
+  .health-table .took {
     display: none;
   }
 }
