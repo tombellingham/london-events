@@ -124,7 +124,7 @@ export function detectBotWall(status: number, body: string): string | null {
 }
 
 /** A (small) 2xx body that is a bot-check page rather than content. */
-function isInterstitial(body: string): boolean {
+export function isInterstitial(body: string): boolean {
   if (body.length > 40_000) return false;
   return /<title>\s*(?:Just a moment|Attention Required|Robot Challenge Screen)|sgcaptcha|Vercel Security Checkpoint/i.test(body.slice(0, 6000));
 }

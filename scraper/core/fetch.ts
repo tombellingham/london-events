@@ -4,7 +4,8 @@
  * - fetchHtml / fetchJson: plain HTTP first; if a bot wall answers, retry in
  *   the real browser. Once a host has walled us, the rest of this run goes
  *   straight to the browser for it (hammering a WAF with doomed plain
- *   requests only makes it stricter).
+ *   requests only makes it stricter), and after the first page load clears
+ *   the check, further pages are fetched from inside that page.
  *
  * - laterPage: pagination guard. Page 1 failing fails the source (that's a
  *   real outage), but page 4 failing shouldn't throw away pages 1–3 — keep
@@ -45,7 +46,7 @@ export async function fetchHtml(
       ctx.log.warn(`${err.message}; using a browser for ${host}`);
     }
   }
-  return ctx.browser.html(url, options.browser);
+  return ctx.browser.sessionHtml(url, options.browser);
 }
 
 export async function fetchJson<T = unknown>(ctx: ScrapeContext, url: string, options: { http?: RequestOptions } = {}): Promise<T> {

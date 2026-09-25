@@ -14,7 +14,7 @@
  */
 
 import type { Browser, BrowserContext, Page } from "playwright";
-import { USER_AGENT, detectBotWall, HttpError } from "./http.ts";
+import { USER_AGENT, detectBotWall, HttpError, isInterstitial } from "./http.ts";
 
 const CHALLENGE_TITLE = /just a moment|attention required|checking your browser|security checkpoint|verify you are human|access blocked|please wait/i;
 
@@ -88,30 +88,114 @@ export class BrowserPool {
     return this.context;
   }
 
+  /** Loads `url` in `page` and waits out any JS bot check and the page's own loading. */
+  private async navigate(page: Page, url: string, options: PageOptions): Promise<void> {
+    this.requests++;
+    const timeout = options.timeoutMs ?? 45_000;
+    const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout });
+    await waitForChallenge(page, url, timeout);
+    if (options.waitFor) {
+      // "attached", not "visible": we only need the markup (and <script> JSON-LD is never visible).
+      await page.waitForSelector(options.waitFor, { state: "attached", timeout: Math.min(timeout, 25_000) }).catch(() => undefined);
+    } else {
+      await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
+    }
+    if (options.settleMs) await page.waitForTimeout(options.settleMs);
+    const status = response?.status() ?? 0;
+    if (status >= 400 && !(await page.title()).trim()) {
+      throw new HttpError(`HTTP ${status} for ${url} (browser)`, status, url);
+    }
+  }
+
   /** Opens a page, waits out any JS bot check, runs `fn`, and always closes the page. */
   async withPage<T>(url: string, fn: (page: Page) => Promise<T>, options: PageOptions = {}): Promise<T> {
     await pageSlots.acquire();
     const context = await this.ctx();
     const page = await context.newPage();
     try {
-      this.requests++;
-      const timeout = options.timeoutMs ?? 45_000;
-      const response = await page.goto(url, { waitUntil: "domcontentloaded", timeout });
-      await waitForChallenge(page, url, timeout);
-      if (options.waitFor) {
-        // "attached", not "visible": we only need the markup (and <script> JSON-LD is never visible).
-        await page.waitForSelector(options.waitFor, { state: "attached", timeout: Math.min(timeout, 25_000) }).catch(() => undefined);
-      } else {
-        await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
-      }
-      if (options.settleMs) await page.waitForTimeout(options.settleMs);
-      const status = response?.status() ?? 0;
-      if (status >= 400 && !(await page.title()).trim()) {
-        throw new HttpError(`HTTP ${status} for ${url} (browser)`, status, url);
-      }
+      await this.navigate(page, url, options);
       return await fn(page);
     } finally {
       await page.close().catch(() => undefined);
+      pageSlots.release();
+    }
+  }
+
+  /**
+   * fetch() from inside an open page (its cookies, its origin). A response
+   * that is a bot check is retried a few times, since the page's own check
+   * may still be completing.
+   */
+  private async fetchIn(page: Page, url: string, init?: RequestInit): Promise<string> {
+    for (let attempt = 0; ; attempt++) {
+      this.requests++;
+      const result = await page.evaluate(
+        async ({ url, init }) => {
+          const res = await fetch(url, { credentials: "include", ...(init ?? {}) });
+          return { status: res.status, text: await res.text() };
+        },
+        { url, init },
+      );
+      if (result.status < 400 && !isInterstitial(result.text)) return result.text;
+      const wall = detectBotWall(result.status >= 400 ? result.status : 403, result.text);
+      if (wall && attempt < 3) {
+        await page.waitForTimeout(3000 * (attempt + 1));
+        continue;
+      }
+      throw new HttpError(`HTTP ${result.status} for ${url} (in-page fetch${wall ? `, ${wall}` : ""})`, result.status, url, Boolean(wall));
+    }
+  }
+
+  /** Per origin: a page that has cleared the site's bot check, kept open for fetches. */
+  private anchors = new Map<string, Promise<Page>>();
+
+  /**
+   * HTML of a page on a bot-protected site, cheaply: the first URL on an
+   * origin is loaded as a real page (clearing the check) and that page is
+   * kept open; later URLs on the same origin are fetched from inside it —
+   * no page load, no new check. If such a fetch is refused, falls back to a
+   * full page load. Returns server HTML for those later URLs, so use html()
+   * for pages that only render client-side.
+   */
+  async sessionHtml(url: string, options: PageOptions = {}): Promise<string> {
+    const origin = new URL(url).origin;
+    const anchor = this.anchors.get(origin);
+    if (anchor) {
+      const page = await anchor.catch(() => null);
+      if (page && !page.isClosed()) {
+        try {
+          return await this.fetchIn(page, url);
+        } catch (err) {
+          if (!(err instanceof HttpError && err.blocked)) throw err;
+        }
+      }
+      return this.html(url, options);
+    }
+
+    let resolveAnchor!: (page: Page) => void;
+    let rejectAnchor!: (err: unknown) => void;
+    const pending = new Promise<Page>((resolve, reject) => {
+      resolveAnchor = resolve;
+      rejectAnchor = reject;
+    });
+    pending.catch(() => undefined);
+    this.anchors.set(origin, pending);
+
+    await pageSlots.acquire();
+    let page: Page | null = null;
+    try {
+      page = await (await this.ctx()).newPage();
+      await this.navigate(page, url, options);
+      const html = await page.content();
+      resolveAnchor(page);
+      return html;
+    } catch (err) {
+      this.anchors.delete(origin);
+      rejectAnchor(err);
+      await page?.close().catch(() => undefined);
+      throw err;
+    } finally {
+      // The kept page idles between fetches, so it doesn't hold a page slot.
       pageSlots.release();
     }
   }
@@ -130,7 +214,7 @@ export class BrowserPool {
     return this.withPage(
       url,
       async (page) => {
-        const deadline = Date.now() + (options.timeoutMs ?? 30_000);
+        const deadline = Date.now() + (options.timeoutMs ?? 45_000);
         for (;;) {
           const text = await page.evaluate(() => document.body?.innerText ?? "").catch(() => "");
           const trimmed = text.trim();
@@ -162,28 +246,7 @@ export class BrowserPool {
   async inPage<T>(pageUrl: string, fn: (get: (url: string, init?: RequestInit) => Promise<string>) => Promise<T>, options: PageOptions = {}): Promise<T> {
     return this.withPage(
       pageUrl,
-      async (page) => {
-        const get = async (url: string, init?: RequestInit): Promise<string> => {
-          for (let attempt = 0; ; attempt++) {
-            this.requests++;
-            const result = await page.evaluate(
-              async ({ url, init }) => {
-                const res = await fetch(url, { credentials: "include", ...(init ?? {}) });
-                return { status: res.status, text: await res.text() };
-              },
-              { url: new URL(url, pageUrl).toString(), init },
-            );
-            if (result.status < 400) return result.text;
-            const wall = detectBotWall(result.status, result.text);
-            if (wall && attempt < 3) {
-              await page.waitForTimeout(3000 * (attempt + 1));
-              continue;
-            }
-            throw new HttpError(`HTTP ${result.status} for ${url} (in-page fetch${wall ? `, ${wall}` : ""})`, result.status, url, Boolean(wall));
-          }
-        };
-        return fn(get);
-      },
+      async (page) => fn((url, init) => this.fetchIn(page, new URL(url, pageUrl).toString(), init)),
       { settleMs: 2000, ...options },
     );
   }
@@ -198,6 +261,7 @@ export class BrowserPool {
   }
 
   async close(): Promise<void> {
+    this.anchors.clear();
     await this.context?.close().catch(() => undefined);
     this.context = null;
   }
