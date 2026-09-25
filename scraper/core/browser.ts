@@ -166,6 +166,8 @@ export class BrowserPool {
         try {
           return await this.fetchIn(page, url);
         } catch (err) {
+          // Running off the end of a paginated listing: an empty page, not an error.
+          if (err instanceof HttpError && err.status === 404 && !err.blocked) return "";
           if (!(err instanceof HttpError && err.blocked)) throw err;
         }
       }
