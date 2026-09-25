@@ -43,7 +43,7 @@ export async function fetchHtml(
     } catch (err) {
       if (!isBlocked(err)) throw err;
       walledHosts.add(host);
-      ctx.log.warn(`${err.message}; using a browser for ${host}`);
+      ctx.log.info(`${err.message}; using a browser for ${host}`);
     }
   }
   return ctx.browser.sessionHtml(url, options.browser);
@@ -57,7 +57,7 @@ export async function fetchJson<T = unknown>(ctx: ScrapeContext, url: string, op
     } catch (err) {
       if (!isBlocked(err)) throw err;
       walledHosts.add(host);
-      ctx.log.warn(`${err.message}; using a browser for ${host}`);
+      ctx.log.info(`${err.message}; using a browser for ${host}`);
     }
   }
   return ctx.browser.json<T>(url);
