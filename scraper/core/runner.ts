@@ -7,6 +7,7 @@
 import type { DateLike, EventRecord, Horizon, RawEvent, RunSummary, ScrapeContext, Source, SourceHealth } from "./types.ts";
 import { Http } from "./http.ts";
 import { BrowserPool, closeBrowser } from "./browser.ts";
+import { HttpError } from "./http.ts";
 import { addDays, fromLondon, londonDate, toLondonDateTime } from "./dates.ts";
 import { normalizeEvent } from "./normalize.ts";
 import { dedupe } from "./dedupe.ts";
@@ -31,6 +32,8 @@ export interface RunOptions {
   timeoutMs?: number;
   now?: Date;
   quiet?: boolean;
+  /** Re-run sources that met a bot check, one at a time, after the main pass (default true). */
+  retryBlocked?: boolean;
 }
 
 export interface RunOutput {
@@ -39,7 +42,16 @@ export interface RunOutput {
 }
 
 
-async function runOne(source: Source, horizon: Horizon, options: RunOptions): Promise<{ health: SourceHealth; events: EventRecord[] }> {
+interface SourceRun {
+  health: SourceHealth;
+  events: EventRecord[];
+  /** Failed, or lost pages, because of a bot check — worth a second, solo attempt. */
+  blocked: boolean;
+}
+
+const BOT_WALL = /blocked by|bot protection|bot check|captcha|challenge/i;
+
+async function runOne(source: Source, horizon: Horizon, options: RunOptions): Promise<SourceRun> {
   const started = Date.now();
   const http = new Http(source.id);
   const browser = new BrowserPool(source.id);
@@ -66,6 +78,7 @@ async function runOne(source: Source, horizon: Horizon, options: RunOptions): Pr
 
   let raw: RawEvent[] = [];
   let error: string | null = null;
+  let blocked = false;
   const timeoutMs = source.timeoutMs ?? options.timeoutMs ?? 240_000;
   let timer: NodeJS.Timeout | undefined;
   try {
@@ -78,6 +91,7 @@ async function runOne(source: Source, horizon: Horizon, options: RunOptions): Pr
     if (!Array.isArray(raw)) throw new Error("scraper did not return an array");
   } catch (err) {
     error = errorMessage(err);
+    blocked = (err instanceof HttpError && err.blocked) || BOT_WALL.test(error);
   } finally {
     clearTimeout(timer);
     await browser.close();
@@ -99,7 +113,9 @@ async function runOne(source: Source, horizon: Horizon, options: RunOptions): Pr
   }
 
   const status = error ? "error" : raw.length === 0 ? "empty" : "ok";
+  if (!error && warnings.some((w) => /stopped paginating/i.test(w) && BOT_WALL.test(w))) blocked = true;
   return {
+    blocked,
     events,
     health: {
       id: source.id,
@@ -122,15 +138,35 @@ async function runOne(source: Source, horizon: Horizon, options: RunOptions): Pr
 export async function runSources(sources: Source[], options: RunOptions): Promise<RunOutput> {
   const startedAt = new Date();
   const horizon = makeHorizon(options.horizonDays, options.now);
+  const report = (source: Source, r: SourceRun) => {
+    if (options.quiet) return;
+    const tag = r.health.status === "ok" ? "✓" : r.health.status === "empty" ? "∅" : "✗";
+    console.log(`${tag} ${source.name}: ${r.health.kept} kept / ${r.health.scraped} scraped in ${(r.health.durationMs / 1000).toFixed(1)}s${r.health.error ? ` — ${r.health.error}` : ""}`);
+  };
   const results = await mapLimit(sources, options.concurrency ?? 6, async (source) => {
     if (!options.quiet) console.log(`→ ${source.name}`);
     const r = await runOne(source, horizon, options);
-    if (!options.quiet) {
-      const tag = r.health.status === "ok" ? "✓" : r.health.status === "empty" ? "∅" : "✗";
-      console.log(`${tag} ${source.name}: ${r.health.kept} kept / ${r.health.scraped} scraped in ${(r.health.durationMs / 1000).toFixed(1)}s${r.health.error ? ` — ${r.health.error}` : ""}`);
-    }
+    report(source, r);
     return r;
   });
+
+  // Bot checks that fail while the machine is busy with a dozen other pages
+  // often pass when the site is visited on its own: give those sources a
+  // second, sequential attempt and keep whichever result is better.
+  if (options.retryBlocked ?? true) {
+    for (const [i, source] of sources.entries()) {
+      if (!results[i].blocked) continue;
+      if (!options.quiet) console.log(`↻ ${source.name}: retrying alone after a bot check`);
+      const again = await runOne(source, horizon, options);
+      report(source, again);
+      const better = again.health.status === "ok" && (results[i].health.status !== "ok" || again.events.length > results[i].events.length);
+      if (better) {
+        again.health.warnings.unshift("needed a second attempt (bot check on the first)");
+        again.health.durationMs += results[i].health.durationMs;
+        results[i] = again;
+      }
+    }
+  }
   await closeBrowser();
 
   const { events, exactDuplicates, crossSourceDuplicates } = dedupe(results.flatMap((r) => r.events));

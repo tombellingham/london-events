@@ -1,5 +1,4 @@
-# Third GH probe: formats still unseen.
-britac-api=https://www.thebritishacademy.ac.uk/ >> https://www.thebritishacademy.ac.uk/api/v2/filter/events/?fields=*&page=1&results=12
-sas-ev=https://www.sas.ac.uk/news-events/events >> https://www.sas.ac.uk/news-events/events/cursing-charioteers-horses-roman-carthage
-sas-ev-page=https://www.sas.ac.uk/news-events/events/cursing-charioteers-horses-roman-carthage
-iop-ev-london=https://www.iop.org/events/single-photons-quantum-computers
+# Fourth GH probe: are the sites the scraper fails on reachable on their own?
+iop-list=https://www.iop.org/events
+pok-list=https://www.tickettailor.com/events/pintsofknowledge
+sas-list=https://www.sas.ac.uk/news-events/events

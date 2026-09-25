@@ -12,6 +12,9 @@ describe("speakers", () => {
     assert.deepEqual(speakersFromTitle("Jane Doe: A Title"), ["Jane Doe"]);
     assert.deepEqual(speakersFromTitle("Slow Looking: Title"), []);
     assert.deepEqual(speakersFromTitle("Digital Heists Uncovered: How Crime Went Online"), []);
+    assert.deepEqual(speakersFromTitle("Walk: William Tyndale"), []); // the subject, not the guide
+    assert.deepEqual(speakersFromTitle("Inaugural Lecture: Professor Rajvinder Karda"), ["Professor Rajvinder Karda"]);
+    assert.deepEqual(speakersFromTitle("Finance Seminar – Dorje Brody"), ["Dorje Brody"]);
   });
   it("finds honorific names in prose", () => {
     assert.deepEqual(honorificNames("Chaired by Dr Amina Patel, with Prof. Tom Jones OBE"), ["Dr Amina Patel", "Prof. Tom Jones"]);

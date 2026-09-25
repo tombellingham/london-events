@@ -91,6 +91,7 @@ async function main(): Promise<void> {
   const { events, summary } = await runSources(selected, {
     horizonDays,
     concurrency: Number(process.env.SCRAPE_CONCURRENCY ?? 6),
+    retryBlocked: process.env.RETRY_BLOCKED !== "0",
   });
 
   if (print) printEvents(events);

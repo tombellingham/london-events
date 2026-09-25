@@ -154,10 +154,15 @@ export function hasPersonMarker(name: string): boolean {
 
 /** "Finance Seminar – Dorje Brody" / "Exploring volcanoes - Professor Sir Steve Sparks" → ["Dorje Brody"…]. */
 export function trailingSpeaker(title: string): string[] {
-  const parts = clean(title).split(/\s+[–—-]\s+|:\s+/);
-  if (parts.length < 2) return [];
-  const tail = parts[parts.length - 1].replace(/\s*\([^)]*\)\s*$/, "");
-  const names = splitNames(tail).filter((n) => looksLikeName(n) && hasPersonMarker(n));
+  const t = clean(title);
+  const seps = [...t.matchAll(/\s+[–—-]\s+|:\s+/g)];
+  const last = seps[seps.length - 1];
+  if (!last) return [];
+  const tail = t.slice((last.index ?? 0) + last[0].length).replace(/\s*\([^)]*\)\s*$/, "");
+  // After a colon the name is as often the subject ("Walk: William Tyndale") as the
+  // speaker, so only an honorific ("Lecture: Professor Jane Roe") counts there.
+  const colon = last[0].trim() === ":";
+  const names = splitNames(tail).filter((n) => looksLikeName(n) && (colon ? HONORIFIC.test(n) : hasPersonMarker(n)));
   return names.length && names.join(" ").length >= tail.replace(/\b(?:and|&)\b/g, "").replace(/[,\s]+/g, " ").trim().length * 0.8 ? names : [];
 }
 

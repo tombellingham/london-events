@@ -1,0 +1,82 @@
+{
+ "count": 15,
+ "next": "https://www.thebritishacademy.ac.uk/api/v2/filter/events/?fields=%2A&page=2&results=12",
+ "previous": null,
+ "results": [
+  {
+   "id": 13421,
+   "meta": {
+    "type": "event.EventSeriesPage",
+    "detail_url": "https://www.thebritishacademy.ac.uk/api/v2/filter/events/13421/",
+    "html_url": "https://www.thebritishacademy.ac.uk/events/searching-for-wellness/",
+    "slug": "searching-for-wellness",
+    "show_in_menus": false,
+    "seo_title": "Searching for wellness",
+    "search_description": "Explore what it means to live well in an increasingly complex world, where our ability to rest, connect and heal is being reshaped by economic pressure, global change and digital life.",
+    "first_published_at": "2026-08-17T09:06:31.395402+01:00",
+    "alias_of": null,
+    "locale": "en-gb"
+   },
+   "title": "Searching for wellness",
+   "start_date": "2026-09-20",
+   "end_date": "2026-11-26",
+   "teaser_summary": "Explore what it means to live well in an increasingly complex world, where our ability to rest, connect and heal is being reshaped by economic pressure, global change and digital life."
+  },
+  {
+   "id": 13063,
+   "meta": {
+    "type": "event.EventPage",
+    "detail_url": "https://www.thebritishacademy.ac.uk/api/v2/filter/events/13063/",
+    "html_url": "https://www.thebritishacademy.ac.uk/events/lectures/living-with-rainfall-fogs-mists-vapours-in-irish-history-1800-present/",
+    "slug": "living-with-rainfall-fogs-mists-vapours-in-irish-history-1800-present",
+    "show_in_menus": false,
+    "seo_title": "Living with Rainfall: Fogs, Mists, Vapours in Irish History, 1800 – present",
+    "search_description": "In the towns and cities of western seaboard of Ireland, it rains more than 250 days a year, a notable wetness of the air which shifts from swirling moisture to pounding rain as weather systems roll in from the Atlantic. This lecture will explore these distinctive, damp, landscapes, and examine how people have adapted to living in these conditions.",
+    "first_published_at": "2026-09-10T09:04:25.307134+01:00",
+    "alias_of": null,
+    "locale": "en-gb"
+   },
+   "title": "Living with rainfall: fogs, mists, vapours in Irish history, 1800 – present",
+   "start_date": "2026-10-06",
+   "end_date": "2026-10-06",
+   "location": "Square One, Coventry University, The Hub, 4 Jordan Well, Coventry, CV1 5QT",
+   "city": "Coventry",
+   "teaser_summary": "In the towns and cities of western seaboard of Ireland, it rains more than 250 days a year, a notable wetness of the air which shifts from swirling moisture to pounding rain as weather systems roll in from the Atlantic. This lecture will explore these distinctive, damp, landscapes, and examine how people have adapted to living in these conditions.",
+   "free": true,
+   "types": [
+    {
+     "name": "Lecture",
+     "slug": "lecture"
+    }
+   ]
+  },
+  {
+   "id": 13430,
+   "meta": {
+    "type": "event.EventPage",
+    "detail_url": "https://www.thebritishacademy.ac.uk/api/v2/filter/events/13430/",
+    "html_url": "https://www.thebritishacademy.ac.uk/events/searching-for-wellness/the-secret-life-of-sewers/",
+    "slug": "the-secret-life-of-sewers",
+    "show_in_menus": false,
+    "seo_title": "The secret life of sewers",
+    "search_description": "From the Big Stink to the fatberg, London's history has always flowed through what (and how) we flush away. Sewers are one of the most transformational, yet least recognised interventions in the history of public health. Join Professor Rosemary Ashton FBA, Dr Paul Dobraszczyk, and Professor Peter Hammond as they reveal the captivating secrets of the vital systems which flow beneath us and their impact on our wellbeing.",
+    "first_published_at": "2026-08-17T09:03:52.814108+01:00",
+    "alias_of": null,
+    "locale": "en-gb"
+   },
+   "title": "The secret life of sewers",
+   "start_date": "2026-10-13",
+   "end_date": "2026-10-13",
+   "location": "The British Academy, 10-11 Carlton House Terrace, London, SW1Y 5AH",
+   "city": "London",
+   "teaser_summary": "From the Big Stink to the fatberg, London's history has always flowed through what (and how) we flush away. Sewers are one of the most transformational, yet least recognised interventions in the history of public health. Join Professor Rosemary Ashton FBA, Dr Paul Dobraszczyk, and Professor Peter Hammond as they reveal the captivating secrets of the vital systems which flow beneath us and their impact on our wellbeing.",
+   "free": true,
+   "types": [
+    {
+     "name": "Panel Discussion",
+     "slug": "panel-discussion"
+    }
+   ]
+  }
+ ]
+}

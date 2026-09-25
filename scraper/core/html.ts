@@ -6,8 +6,15 @@ import type { AnyNode } from "domhandler";
 export type { CheerioAPI, Cheerio } from "cheerio";
 export type Node = AnyNode;
 
+/**
+ * Parses HTML. A space is added after every <br> so .text() doesn't glue
+ * lines together ("Little Titchfield Campus<br>4-12 Little Titchfield St"
+ * would otherwise read "Campus4-12"); the <br>s stay for code that splits on them.
+ */
 export function loadHtml(html: string): cheerio.CheerioAPI {
-  return cheerio.load(html);
+  const $ = cheerio.load(html);
+  $("br").after(" ");
+  return $;
 }
 
 /** Resolves a (possibly relative / protocol-relative / entity-encoded) href. */

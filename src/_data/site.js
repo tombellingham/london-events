@@ -22,6 +22,15 @@ function readJson(name, fallback) {
   }
 }
 
+/** "Blocked by … at https://www.iop.org/events (challenge did not clear…)" → "Blocked by … at www.iop.org". */
+function shortError(message) {
+  if (!message) return null;
+  return message
+    .replace(/https?:\/\/([^/\s)]+)[^\s)]*/g, "$1")
+    .replace(/\s*\((?:challenge did not clear[^)]*|in-page fetch[^)]*)\)/g, "")
+    .trim();
+}
+
 const londonLabel = (iso) =>
   new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
@@ -53,6 +62,7 @@ export default function () {
       count: h?.count ?? 0,
       scraped: h?.scraped ?? 0,
       error: h?.error ?? null,
+      errorShort: shortError(h?.error),
       warnings: h?.warnings?.length ?? 0,
       seconds: h ? Math.round(h.durationMs / 100) / 10 : null,
     };

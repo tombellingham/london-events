@@ -209,9 +209,15 @@ export class BrowserPool {
 
 async function waitForChallenge(page: Page, url: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + Math.min(timeoutMs, 35_000);
+  let focused = false;
   for (;;) {
     const title = await page.title().catch(() => "");
     if (!CHALLENGE_TITLE.test(title)) return;
+    if (!focused) {
+      // Challenge scripts may idle in a background tab; give this one the focus.
+      focused = true;
+      await page.bringToFront().catch(() => undefined);
+    }
     if (Date.now() > deadline) {
       const html = await page.content().catch(() => "");
       const wall = detectBotWall(403, html) ?? "bot protection";

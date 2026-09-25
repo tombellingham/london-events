@@ -65,7 +65,12 @@ export const birkbeck: Source = {
       const lines = htmlToLines(main.html() ?? "");
       const venue = labelled(lines, /venue/i);
       const changed = lines.find((l) => /change of venue/i.test(l));
-      const paras = main.find("p").map((_, p) => clean($(p).text())).get().filter((t) => t.length > 80);
+      // Venue-change notices are location, not description.
+      const paras = main
+        .find("p")
+        .map((_, p) => clean($(p).text()))
+        .get()
+        .filter((t) => t.length > 80 && !/^(?:please )?note:?\s*(?:the )?change of venue/i.test(t));
       const description = paras.slice(0, 2).join(" ");
       let location = event.location;
       if (changed) location = clean(changed.replace(/^.*change of venue:?\s*/i, ""));

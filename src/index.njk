@@ -34,7 +34,7 @@ permalink: index.html
         {% if site.generatedLabel %}<span>Updated {{ site.generatedLabel }}</span><span class="sep">·</span>{% endif %}
         <a href="#health" class="health-pill health-pill--ok" title="Sources that returned events on the last run"><span class="dot dot--ok"></span>{{ site.totals.ok }} ok</a>
         {% if site.totals.empty %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--empty" title="Sources that ran without errors but returned nothing (usually a sign the site changed)"><span class="dot dot--empty"></span>{{ site.totals.empty }} empty</a>{% endif %}
-        {% if site.totals.failed %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--error" title="{% for s in site.failedSources %}{{ s.name }}: {{ s.error }}&#10;{% endfor %}"><span class="dot dot--error"></span>{{ site.totals.failed }} failed</a>{% endif %}
+        {% if site.totals.failed %}<span class="sep">·</span><a href="#health" class="health-pill health-pill--error" title="{% for s in site.failedSources %}{{ s.name }}: {{ s.errorShort }}&#10;{% endfor %}"><span class="dot dot--error"></span>{{ site.totals.failed }} failed</a>{% endif %}
         <span class="sep">·</span><span id="history-spark" class="spark" aria-hidden="true"></span>
       </p>
     </section>
@@ -83,12 +83,12 @@ permalink: index.html
       <h2 class="section-title" id="health-title">Status</h2>
       <p class="health__intro">Each source is scraped once a day. <strong>Empty</strong> means the scraper ran but found nothing, which usually means the site changed; <strong>failed</strong> means it errored or was blocked. Bars show events found on recent runs.</p>
       <table class="health-table">
-        <thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col" class="num">Events</th><th scope="col" class="num">Found</th><th scope="col">Recent runs</th></tr></thead>
+        <thead><tr><th scope="col">Source</th><th scope="col">Status</th><th scope="col" class="num" title="Upcoming London events listed here after filtering and de-duplication">Events</th><th scope="col" class="num" title="Everything the scraper found, before filtering">Found</th><th scope="col">Recent runs</th></tr></thead>
         <tbody>
           {% for s in site.sources %}
           <tr class="health-row health-row--{{ s.status }}" data-source="{{ s.id }}">
             <th scope="row"><a href="{{ s.homepage }}" rel="noopener">{{ s.name }}</a></th>
-            <td><span class="dot dot--{{ s.status }}"></span>{% if s.status == "ok" %}ok{% elif s.status == "empty" %}empty{% elif s.status == "error" %}failed{% else %}—{% endif %}{% if s.error %}<span class="health-row__error">{{ s.error }}</span>{% endif %}</td>
+            <td><span class="dot dot--{{ s.status }}"></span>{% if s.status == "ok" %}ok{% elif s.status == "empty" %}empty{% elif s.status == "error" %}failed{% else %}—{% endif %}{% if s.error %}<span class="health-row__error" title="{{ s.error }}">{{ s.errorShort }}</span>{% endif %}</td>
             <td class="num">{{ s.count }}</td>
             <td class="num">{{ s.scraped }}</td>
             <td class="runs" data-runs="{{ s.id }}"></td>

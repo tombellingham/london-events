@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import type { EventRecord, Horizon, LondonDateTime, RawEvent, Source } from "./types.ts";
 import { daysBetween, fromLondon, isValidDate, toLondonDateTime } from "./dates.ts";
-import { clean, htmlToText, stripWrappingQuotes, truncate, uniqNames, unshout } from "./text.ts";
+import { clean, htmlToText, speakersFromTitle, stripWrappingQuotes, truncate, uniqNames, unshout } from "./text.ts";
 import { classifyFree, classifyOnline, isOutsideLondon } from "./classify.ts";
 
 export const DESCRIPTION_MAX = 420;
@@ -162,7 +162,9 @@ export function normalizeEvent(raw: RawEvent, source: Source, horizon: Horizon):
     location = `${location} (livestream)`;
   }
 
-  const speakers = uniqNames(raw.speakers ?? [])
+  // Sources without speaker data get the (conservative) title reading: "X in
+  // conversation with Y", "An evening with X", "X: Title" when X is clearly a person.
+  const speakers = uniqNames(raw.speakers?.length ? raw.speakers : speakersFromTitle(title))
     .filter((s) => s.length >= 3 && s.length <= 80 && s.toLowerCase() !== title.toLowerCase())
     .slice(0, 12);
 

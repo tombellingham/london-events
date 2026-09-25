@@ -14,7 +14,7 @@
 
 import type { LondonDateTime, RawEvent, Source } from "../core/types.ts";
 import { absUrl, hasType, jsonLdNodes, labelledValue, loadHtml } from "../core/html.ts";
-import { clean, honorificNames, htmlToLines, labelled, speakersFromTitle } from "../core/text.ts";
+import { clean, cleanName, honorificNames, htmlToLines, labelled, looksLikeName, speakersFromTitle } from "../core/text.ts";
 import { parseDateTime, parseNaiveLondon, parseTime } from "../core/dates.ts";
 import { mapLimit } from "../core/async.ts";
 
@@ -48,8 +48,8 @@ export function sasTeaser(markup: string): Listed | null {
   return { title, url, start: { date: start.date, time: null }, end, organiser };
 }
 
-/** Time, venue and description from an event page ("Label: value" lines or <dt>/<dd>-style fields). */
-export function sasDetails(html: string): { time: string | null; location: string | null; description: string | null; text: string; type: string } {
+/** Time, venue, description and speakers from an event page ("Label" + value fields). */
+export function sasDetails(html: string): { time: string | null; location: string | null; description: string | null; speakers: string[]; text: string; type: string } {
   const $ = loadHtml(html);
   const node = jsonLdNodes($).find((n) => hasType(n, /Event/));
   const main = $("main").first();
@@ -58,8 +58,27 @@ export function sasDetails(html: string): { time: string | null; location: strin
   const start = typeof node?.startDate === "string" ? parseNaiveLondon(node.startDate.replace(/([zZ]|[+-]\d{2}:?\d{2})$/, "")) : null;
   const time = start?.time ?? parseTime(field(/^(?:time|start time|times?)$/i, /time/i) ?? "") ?? parseDateTime(field(/^(?:date|dates|date and time|date & time|when)$/i, /date/i) ?? "")?.time ?? null;
   const location = field(/^(?:venue|location|where|address)$/i, /(?:venue|location|where)/i);
-  const description = clean($('meta[name="description"]').attr("content") ?? "") || null;
-  return { time, location: location ? clean(location) : null, description, text: lines.join("\n"), type: field(/^(?:event type|type)$/i, /event type/i) ?? "" };
+  const paragraph = main
+    .find(".c-wysiwyg p")
+    .map((_, p) => clean($(p).text()))
+    .get()
+    .find((t) => t.length > 80 && !/^this page was last updated/i.test(t));
+  const description = clean($('meta[name="description"]').attr("content") ?? "") || paragraph || null;
+  // "Celia Sánchez Natalías (University of Zaragoza)"; several are separated by lines or semicolons.
+  const speakerField = labelledValue($, /^speakers?$/i, main) ?? "";
+  const speakers = speakerField
+    .replace(/\([^)]*\)/g, ";")
+    .split(/\s*(?:;|\band\b|&)\s*/)
+    .map(cleanName)
+    .filter(looksLikeName);
+  return {
+    time,
+    location: location ? clean(location) : null,
+    description,
+    speakers,
+    text: lines.join("\n"),
+    type: field(/^(?:event type|type)$/i, /event type/i) ?? "",
+  };
 }
 
 export const sas: Source = {
@@ -74,7 +93,7 @@ export const sas: Source = {
       const seen = new Set<string>();
       let pages = 1;
       for (let page = 0; page < Math.min(pages, 25); page++) {
-        const data = JSON.parse(await get(API(page))) as ListingResponse;
+        const data = JSON.parse(await get(API(page), { headers: { Accept: "application/json" } })) as ListingResponse;
         if (!Array.isArray(data.items)) throw new Error("listing API shape changed (no items array)");
         pages = Math.ceil((data.meta?.count ?? 0) / PER_PAGE);
         let beyond = 0;
@@ -102,7 +121,7 @@ export const sas: Source = {
             start: { date: event.start.date, time: d.time },
             location: d.location,
             description: d.description,
-            speakers: [...(base.speakers ?? []), ...honorificNames(d.description)],
+            speakers: [...d.speakers, ...(base.speakers ?? []), ...honorificNames(d.description)],
             hints: [event.organiser, d.type, d.text.slice(0, 3000)],
           };
         } catch (err) {
