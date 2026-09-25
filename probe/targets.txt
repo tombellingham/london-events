@@ -1,0 +1,13 @@
+rsa=https://www.thersa.org/events
+iop=https://www.iop.org/events
+rsm=https://www.rsm.ac.uk/events/
+ucl=https://www.ucl.ac.uk/events/
+sas=https://www.sas.ac.uk/events
+ra=https://www.royalacademy.org.uk/events
+royalsoc=https://royalsociety.org/science-events-and-lectures/
+rsc=https://www.rsc.org/events
+britac=https://www.thebritishacademy.ac.uk/events/
+iq2=https://www.intelligencesquared.com/
+pok=https://www.tickettailor.com/events/pintsofknowledge
+gresham=https://www.gresham.ac.uk/sites/default/files/attachments/whatson.json
+hlsi=https://hlsi.org.uk/
