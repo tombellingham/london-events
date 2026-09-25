@@ -156,6 +156,7 @@ Useful environment variables:
 - Some sources don't publish everything. Barbican and Tate load prices in
   the browser from their box offices: Barbican events count as paid unless
   the text says free, and Tate's free events come from its own "free"
-  filter, without prices for the rest. RSC and IOP rarely give prices,
-  Southbank never names speakers. Missing fields are left empty rather than
-  guessed, and an unknown price matches neither the Free nor the Paid filter.
+  filter, without prices for the rest. RSC and IOP rarely give prices, and
+  Southbank names speakers only in titles. Missing fields are left empty
+  rather than guessed, and an unknown price matches neither the Free nor the
+  Paid filter.
