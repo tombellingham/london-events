@@ -67,6 +67,7 @@ jobs:
         with:
           name: scrape-output
           path: .build
+          include-hidden-files: true
           retention-days: 14
 
       - name: Configure Pages

@@ -30,6 +30,7 @@ jobs:
         if: always()
         with:
           name: preview
+          include-hidden-files: true # .build/
           path: |
             probe-out
             .build
