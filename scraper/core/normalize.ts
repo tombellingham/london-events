@@ -92,7 +92,7 @@ const HAS_ONLINE_OPTION = /\b(?:online|livestream|live[\s-]stream|live[\s-]strea
 
 /** Events restricted to a society's members/fellows/friends aren't public listings. */
 export function isMembersOnly(title: string, description: string): boolean {
-  if (/\b(?:members|fellows|friends)(?:\s+of\s+(?:the\s+)?[\w&]+)?['’]?\s*(?:\(only\)|only)\b|\bfellows['’]\s+(?:tour|evening|meeting|event|drinks)\b/i.test(title)) return true;
+  if (/\b(?:members|fellows|friends)(?:\s+of\s+(?:the\s+)?[\w&]+)?['’]?\s*(?:\(only\)|only\b)|\bfellows['’]\s+(?:tour|evening|meeting|event|drinks)\b/i.test(title)) return true;
   const lead = htmlToText(description).slice(0, 400);
   return /\b(?:for|open to)\s+(?:members|fellows)\s+only\b|\b(?:members|fellows)[\s-]only\s+(?:event|lecture|tour|meeting)\b|\bin person and members only\b|\bthis (?:event|tour|lecture) is (?:for|open to) (?:members|fellows)\b/i.test(lead);
 }

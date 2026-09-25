@@ -26,6 +26,8 @@ describe("title clean-up", () => {
   });
   it("detects members-only events", () => {
     assert.equal(isMembersOnly("Fellows' Evening", ""), true);
+    assert.equal(isMembersOnly("Friends of RAS (only): Early galaxies", ""), true);
+    assert.equal(isMembersOnly("Members only: curator tour", ""), true);
     assert.equal(isMembersOnly("Autumn Lecture", "This event is for members only."), true);
     assert.equal(isMembersOnly("Autumn Lecture", "Open to all; members get priority booking."), false);
   });
