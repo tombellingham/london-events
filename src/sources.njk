@@ -1,5 +1,5 @@
 ---
-permalink: status/index.html
+permalink: sources/index.html
 root: "../"
 ---
 {% extends "base.njk" %}
@@ -8,10 +8,10 @@ root: "../"
 <span class="spark" role="img" aria-label="{{ label }}">{% for b in bars %}<i class="{{ b.cls }}" style="height:{{ b.height }}%" title="{{ b.title }}"></i>{% endfor %}</span>
 {%- endmacro %}
 
-{% block title %}Status · Talks &amp; lectures in London{% endblock %}
+{% block title %}Sources · Talks &amp; lectures in London{% endblock %}
 {% block description %}How the daily scrape of {{ site.totals.sources }} London institutions went: which sources worked, which failed, and recent history.{% endblock %}
-{% block heading %}Status{% endblock %}
-{% block nav %}<a href="../">Events</a><a href="#data">Raw data</a>{% endblock %}
+{% block heading %}Sources{% endblock %}
+{% block nav %}<a href="../">Events</a>{% endblock %}
 
 {% block content %}
     <section class="intro">
@@ -52,7 +52,7 @@ root: "../"
     </section>
 
     <section class="data" id="data" aria-labelledby="data-title">
-      <h2 class="section-title" id="data-title">Raw data</h2>
+      <h1 class="section-title" id="data-title">Raw data</h1>
       <ul class="data-files">
         <li><a href="../data/events.json">events.json</a>: every listed event, as shipped to the events page.</li>
         <li><a href="../data/health.json">health.json</a>: this run in detail, per source (counts, drop reasons with examples, warnings, timings).</li>
@@ -61,5 +61,3 @@ root: "../"
       </ul>
     </section>
 {% endblock %}
-
-{% block footer %} <a href="../">Back to the events</a>.{% endblock %}
