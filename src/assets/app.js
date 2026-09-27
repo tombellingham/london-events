@@ -232,18 +232,20 @@
 
   function eventHtml(e, qs, now) {
     var src = SOURCE_BY_ID[e.source];
+    // The price leads the line, as a tag: free, the price, or just "Paid" (nothing when unknown).
+    var tag =
+      e.free === true ? '<span class="tag tag--free">Free</span>' :
+      e.price ? '<span class="tag tag--paid">' + esc(shortPrice(e.price)) + "</span>" :
+      e.free === false ? '<span class="tag tag--paid">Paid</span>' : "";
     var meta = ['<span class="event__source">' + esc(src ? src.name : e.source) + "</span>"];
     if (e.location) meta.push("<span>" + highlight(e.location, qs) + "</span>");
-    if (e.free === true) meta.push('<span class="tag tag--free">Free</span>');
-    else if (e.price) meta.push('<span class="tag">' + esc(shortPrice(e.price)) + "</span>");
-    else if (e.free === false) meta.push('<span class="tag">Paid</span>');
     var past = e.date === now.date && e.time && e.time < now.time;
     var html =
       '<article class="event' + (past ? " event--past" : "") + '">' +
       '<div class="event__time' + (e.time ? "" : " event__time--none") + '">' + (e.time ? esc(e.time) : "—") + "</div>" +
       '<div class="event__body">' +
       '<h3 class="event__title"><a href="' + esc(e.url) + '" rel="noopener">' + highlight(e.title, qs) + "</a></h3>" +
-      '<p class="event__meta">' + meta.join('<span class="sep">·</span>') + "</p>";
+      '<p class="event__meta">' + tag + meta.join('<span class="sep">·</span>') + "</p>";
     if (e.speakers && e.speakers.length) {
       html += '<p class="event__speakers"><span class="label-inline">With </span>' + highlight(e.speakers.join(", "), qs) + "</p>";
     }

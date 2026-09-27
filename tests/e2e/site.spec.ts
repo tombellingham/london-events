@@ -128,6 +128,24 @@ test("the title shares its top line with the page links", async ({ page }) => {
   expect(nav!.y - h1!.y).toBeLessThan(6);
 });
 
+test("the price comes first on the meta line, as a coloured tag", async ({ page }) => {
+  await open(page);
+  const free = page.locator(".event", { hasText: "Morning lecture on maps" }).locator(".event__meta");
+  await expect(free.locator(":scope > :first-child")).toHaveText("Free");
+  await expect(free).toHaveText(/^Free\s*Alpha Institute·Senate House/);
+  const paid = page.locator(".event", { hasText: "Evening debate on rivers" }).locator(".event__meta > :first-child");
+  await expect(paid).toHaveText("£10");
+  for (const [tag, background] of [[free.locator(".tag"), "rgb(94, 153, 113)"], [paid, "rgb(184, 48, 118)"]] as const) {
+    await expect(tag).toHaveCSS("background-color", background);
+    await expect(tag).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(tag).toHaveCSS("font-weight", "600");
+    await expect(tag).toHaveCSS("border-radius", "4.8px");
+    await expect(tag).toHaveCSS("padding", "0px 4.8px");
+  }
+  await page.getByRole("button", { name: "Next 30 days" }).click();
+  await expect(page.locator(".event", { hasText: "Paid talk without a listed price" }).locator(".tag--paid")).toHaveText("Paid");
+});
+
 test("day headings are blue, with the relative day in heavy type", async ({ page }) => {
   await open(page);
   const heading = page.locator(".day__title").first();
