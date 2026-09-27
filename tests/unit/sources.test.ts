@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { sources } from "../../scraper/sources/index.ts";
 import { parseSouthbankDates } from "../../scraper/sources/southbank.ts";
-import { pokFeedEvents, pokSpeakers, type MapFeed } from "../../scraper/sources/pints-of-knowledge.ts";
+import { pokDescription, pokFeedEvents, pokSpeakers, type MapFeed } from "../../scraper/sources/pints-of-knowledge.ts";
 import { readFileSync } from "node:fs";
 import { sasDetails, sasTeaser } from "../../scraper/sources/sas.ts";
 import { baApiEvent, baDetails } from "../../scraper/sources/british-academy.ts";
@@ -45,7 +45,14 @@ describe("source-specific parsers", () => {
   });
   it("Pints of Knowledge: speaker from the 'With …' line", () => {
     assert.deepEqual(pokSpeakers('"100 Facts About London"With Jonnie Fielding (Bowl of Chalk)\nDetails: …'), ["Jonnie Fielding"]);
+    assert.deepEqual(pokSpeakers('"How to Win \'The Traitors\' with Aristotle"with Alexander SergeantSummary: The Traitors has…'), ["Alexander Sergeant"]);
     assert.deepEqual(pokSpeakers("No speaker line here"), []);
+  });
+  it("Pints of Knowledge: descriptions lose the repeated title and speaker", () => {
+    assert.equal(pokDescription('"100 Facts You Probably Didn\'t Know About London"With Jonnie Fielding (Bowl of Chalk) Details:For the last 15 years…'), "For the last 15 years…");
+    assert.equal(pokDescription('"When to Quit?"with Anthony KlotzDetails: Anthony Klotz predicted…'), "Anthony Klotz predicted…");
+    assert.equal(pokDescription('"Fact in Fiction" with Riley Neubauer Summary: It sounds unfathomable…'), "It sounds unfathomable…");
+    assert.equal(pokDescription("A talk about maps. Details: to follow."), "A talk about maps. Details: to follow.");
   });
   it("SAS: teasers from the listing API", () => {
     const teaser = sasTeaser(readFileSync(new URL("./fixtures/sas-teaser.html", import.meta.url), "utf8"));

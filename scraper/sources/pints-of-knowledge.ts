@@ -61,15 +61,26 @@ export function pokFeedEvents(feed: MapFeed): Listed[] {
   return out;
 }
 
-/** "…London"With Jonnie Fielding (Bowl of Chalk)\nDetails:…" → ["Jonnie Fielding"]. */
+/** '…London"With Jonnie Fielding (Bowl of Chalk)\nDetails:…' → ["Jonnie Fielding"] (also "…SergeantSummary:"). */
 export function pokSpeakers(description: string): string[] {
-  const m = description.match(/\bwith\s+([^\n]+?)(?:\n|details\s*:|$)/i);
+  // Skip the quoted title first: it may have a "with" of its own ("How to Win 'The Traitors' with Aristotle").
+  const text = description.replace(/^\s*(?:<[^>]+>\s*)*["“][^"”]*["”]/, " ");
+  const m = text.match(/\bwith\s+([^\n]+?)(?:\n|details\s*:|summary\s*:|$)/i);
   if (!m) return [];
   return m[1]
     .replace(/\([^)]*\)/g, " ")
     .split(/\s*(?:,|&|\band\b)\s*/)
     .map(cleanName)
     .filter(looksLikeName);
+}
+
+/**
+ * Descriptions open with the title and speaker again, then a label:
+ * '"Ghosting…" with Jo Bloggs (UCL) Summary: How…' → 'How…'.
+ */
+export function pokDescription(text: string): string {
+  const m = text.match(/^\s*["“”]?[\s\S]{0,300}?(?:details|summary)\s*:\s*/i);
+  return m && /^\s*["“”]|\bwith\b/i.test(m[0]) ? text.slice(m[0].length).trim() : text;
 }
 
 /** The fallback listing: Ticket Tailor's box office ("Mon 28 Sep 2026 7:00 PM - 8:30 PM", "Pizza East, E1 6JJ"). */
@@ -132,7 +143,7 @@ export const pintsOfKnowledge: Source = {
         }
         const node = jsonLdNodes(loadHtml(html)).find((n) => hasType(n, /Event/));
         if (!node) return event;
-        const description = htmlToText(String(node.description ?? ""));
+        const description = pokDescription(htmlToText(String(node.description ?? "")));
         const instant = typeof node.startDate === "string" ? parseIsoInstant(node.startDate) : null;
         return {
           ...event,
