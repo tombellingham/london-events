@@ -1,4 +1,4 @@
-/* Talks and lectures in London — all filtering happens here, on the full event blob that is
+/* Talks & lectures in London — all filtering happens here, on the full event blob that is
    inlined into the page at build time. No framework, no build step. */
 
 (function () {
