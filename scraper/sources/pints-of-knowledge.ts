@@ -8,9 +8,10 @@
  * its venue and address, start time and Ticket Tailor link, per venue.
  *
  * Descriptions and speakers ("With <speaker> (<affiliation>)") are only on
- * the Ticket Tailor event pages, in schema.org Event JSON-LD. Those are read
- * whenever Ticket Tailor lets the browser through; at the first bot check the
- * rest of the day's talks are listed without them. If the map feed is ever
+ * the Ticket Tailor event pages (whose JSON-LD cuts the description off at
+ * 140 characters, so it's read from the page itself). Those are read whenever
+ * Ticket Tailor lets the browser through; at the first bot check the rest of
+ * the day's talks are listed without them. If the map feed is ever
  * unavailable, the Ticket Tailor box office listing is read instead.
  */
 
@@ -61,26 +62,68 @@ export function pokFeedEvents(feed: MapFeed): Listed[] {
   return out;
 }
 
-/** '…London"With Jonnie Fielding (Bowl of Chalk)\nDetails:…' → ["Jonnie Fielding"] (also "…SergeantSummary:"). */
-export function pokSpeakers(description: string): string[] {
-  // Skip the quoted title first: it may have a "with" of its own ("How to Win 'The Traitors' with Aristotle").
-  const text = description.replace(/^\s*(?:<[^>]+>\s*)*["“][^"”]*["”]/, " ");
-  const m = text.match(/\bwith\s+([^\n]+?)(?:\n|details\s*:|summary\s*:|$)/i);
-  if (!m) return [];
-  return m[1]
-    .replace(/\([^)]*\)/g, " ")
-    .split(/\s*(?:,|&|\band\b)\s*/)
-    .map(cleanName)
-    .filter(looksLikeName);
-}
+/** Venue, running times and FAQs follow the description on every event page. */
+const BOILERPLATE = /\s(?:Venue|Event Running Time|Running Time|FAQs?)\s*:[\s\S]*$/;
 
 /**
- * Descriptions open with the title and speaker again, then a label:
- * '"Ghosting…" with Jo Bloggs (UCL) Summary: How…' → 'How…'.
+ * What follows the repeated title: the speakers, then "Details:" or "Summary:",
+ * sometimes glued on ("KlotzDetails:") or without its colon ("SummaryFor…").
  */
-export function pokDescription(text: string): string {
-  const m = text.match(/^\s*["“”]?[\s\S]{0,300}?(?:details|summary)\s*:\s*/i);
-  return m && /^\s*["“”]|\bwith\b/i.test(m[0]) ? text.slice(m[0].length).trim() : text;
+const PREAMBLE = /^[\s"”'’.!?]*(?:[Ww]ith\s+([\s\S]{1,150}?))?\s*(?:[Dd]etails|[Ss]ummary|DETAILS|SUMMARY)(?:\s*:|(?=\s*[A-Z]))\s*/;
+
+/**
+ * Event page descriptions open with the title and speakers again and close
+ * with the venue, running times and FAQs:
+ * '"Ghosting…" with Jo Bloggs (UCL) Summary: Being… Venue: …' → "Being…", ["Jo Bloggs"].
+ */
+export function pokDescription(text: string, title: string): { description: string; speakers: string[] } {
+  const body = clean(text);
+  const repeated = titleEnd(body, title);
+  const head = Math.max(repeated, body.match(/^[^\p{L}\p{N}"“]*["“][^"”]*["”]/u)?.[0].length ?? 0);
+  const m = body.slice(head).match(PREAMBLE);
+  let description = body;
+  let speakers: string[] = [];
+  if (m) {
+    description = body.slice(head + m[0].length);
+    speakers = (m[1] ?? "")
+      .replace(BOILERPLATE, "")
+      .replace(/\([^)]*\)/g, " ")
+      .split(/\s*(?:,|&|\band\b)\s*/)
+      .map(cleanName)
+      .filter(looksLikeName);
+  } else if (repeated) {
+    // Only the title again ("📚BOOK CLUB: … with Antonia Senior For this debut…").
+    description = body.slice(head).replace(/^[\s"”'’.,:;!?–—-]+/, "");
+  }
+  return { description: description.replace(BOILERPLATE, "").trim(), speakers };
+}
+
+/** Where the title ends if `text` opens with it (ignoring case, punctuation and emoji), else 0. */
+function titleEnd(text: string, title: string): number {
+  const want = title.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  if (!want) return 0;
+  let k = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i].toLowerCase();
+    if (!/[\p{L}\p{N}]/u.test(ch)) continue;
+    if (ch !== want[k]) return 0;
+    if (++k === want.length) return i + 1;
+  }
+  return 0;
+}
+
+/** A Ticket Tailor event page → the description, speakers and exact start. */
+export function pokEventPage(html: string, title: string): { description: string | null; speakers: string[]; start: Date | null } {
+  const $ = loadHtml(html);
+  const node = jsonLdNodes($).find((n) => hasType(n, /Event/));
+  // The JSON-LD description stops at 140 characters; the page has all of it.
+  const text = htmlToText($(".event-page-description").first().html()) || htmlToText(String(node?.description ?? ""));
+  const { description, speakers } = pokDescription(text, title);
+  return {
+    description: description || null,
+    speakers,
+    start: typeof node?.startDate === "string" ? parseIsoInstant(node.startDate) : null,
+  };
 }
 
 /** The fallback listing: Ticket Tailor's box office ("Mon 28 Sep 2026 7:00 PM - 8:30 PM", "Pizza East, E1 6JJ"). */
@@ -141,15 +184,12 @@ export const pintsOfKnowledge: Source = {
           walled = true;
           return event;
         }
-        const node = jsonLdNodes(loadHtml(html)).find((n) => hasType(n, /Event/));
-        if (!node) return event;
-        const description = pokDescription(htmlToText(String(node.description ?? "")));
-        const instant = typeof node.startDate === "string" ? parseIsoInstant(node.startDate) : null;
+        const page = pokEventPage(html, event.title);
         return {
           ...event,
-          start: instant ?? event.start,
-          description: description || null,
-          speakers: uniqNames([...pokSpeakers(String(node.description ?? "")), ...(event.speakers ?? [])]),
+          start: page.start ?? event.start,
+          description: page.description ?? event.description,
+          speakers: uniqNames([...page.speakers, ...(event.speakers ?? [])]),
         };
       },
       (e) => e.url,

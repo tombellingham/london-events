@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { sources } from "../../scraper/sources/index.ts";
 import { parseSouthbankDates } from "../../scraper/sources/southbank.ts";
-import { pokDescription, pokFeedEvents, pokSpeakers, type MapFeed } from "../../scraper/sources/pints-of-knowledge.ts";
+import { pokDescription, pokEventPage, pokFeedEvents, type MapFeed } from "../../scraper/sources/pints-of-knowledge.ts";
 import { readFileSync } from "node:fs";
 import { sasDetails, sasTeaser } from "../../scraper/sources/sas.ts";
 import { baApiEvent, baDetails } from "../../scraper/sources/british-academy.ts";
@@ -43,16 +43,28 @@ describe("source-specific parsers", () => {
       ],
     );
   });
-  it("Pints of Knowledge: speaker from the 'With …' line", () => {
-    assert.deepEqual(pokSpeakers('"100 Facts About London"With Jonnie Fielding (Bowl of Chalk)\nDetails: …'), ["Jonnie Fielding"]);
-    assert.deepEqual(pokSpeakers('"How to Win \'The Traitors\' with Aristotle"with Alexander SergeantSummary: The Traitors has…'), ["Alexander Sergeant"]);
-    assert.deepEqual(pokSpeakers("No speaker line here"), []);
+  it("Pints of Knowledge: the whole description from the event page, without the venue and FAQs", () => {
+    const page = pokEventPage(fixture("pok-event.html"), "100 Facts You Probably Didn't Know About London");
+    assert.match(page.description!, /^For the last 15 years, Jonnie Fielding \(better known as 'Bowl of Chalk'\) a dedicated/);
+    assert.match(page.description!, /why Downing Street is Painted Black\.$/);
+    assert.deepEqual(page.speakers, ["Jonnie Fielding"]);
+    assert.equal(page.start?.toISOString(), "2026-09-28T18:00:00.000Z");
   });
-  it("Pints of Knowledge: descriptions lose the repeated title and speaker", () => {
-    assert.equal(pokDescription('"100 Facts You Probably Didn\'t Know About London"With Jonnie Fielding (Bowl of Chalk) Details:For the last 15 years…'), "For the last 15 years…");
-    assert.equal(pokDescription('"When to Quit?"with Anthony KlotzDetails: Anthony Klotz predicted…'), "Anthony Klotz predicted…");
-    assert.equal(pokDescription('"Fact in Fiction" with Riley Neubauer Summary: It sounds unfathomable…'), "It sounds unfathomable…");
-    assert.equal(pokDescription("A talk about maps. Details: to follow."), "A talk about maps. Details: to follow.");
+  it("Pints of Knowledge: descriptions lose the repeated title and speakers", () => {
+    const cases: Array<[string, string, string, string[]]> = [
+      ["When to Quit?", '"When to Quit?"with Anthony KlotzDetails: Anthony Klotz predicted…', "Anthony Klotz predicted…", ["Anthony Klotz"]],
+      ["How to Win 'The Traitors' with Aristotle", `"How to Win 'The Traitors' with Aristotle"with Alexander SergeantSummary: The Traitors has…`, "The Traitors has…", ["Alexander Sergeant"]],
+      ['“I Vant to Suck Your Blood”: The Eternal Appeal of Vampires."', "“I vant to suck your blood”: The eternal appeal of vampires With Dr Kaja Franck SummaryFor centuries, vampires…", "For centuries, vampires…", ["Dr Kaja Franck"]],
+      // The heading needn't match the listed title.
+      ["The Carbon Story Hiding in Your Local Pub", '"The Carbon Story Hiding in Your Local" with Will Arnold (Arup) Summary: Look around…', "Look around…", ["Will Arnold"]],
+      ["The Pub", '"The Pub" with Sivamohan Valluvan and Amit Singh Summary: Amit Singh, …', "Amit Singh, …", ["Sivamohan Valluvan", "Amit Singh"]],
+      ['BOOK CLUB: "Stalin’s Apostles" with Antonia Senior', "📚BOOK CLUB: Stalin’s Apostles with Antonia Senior For this debut book club…", "For this debut book club…", []],
+      ["Maps", "A talk about maps. Details: to follow.", "A talk about maps. Details: to follow.", []],
+      ["Maps", '"Brilliant" – The Times. Join us for…', '"Brilliant" – The Times. Join us for…', []],
+      // Venue details before the label don't cut the description short.
+      ["Maps", '"Maps" with Jo Bloggs Venue: The Pub Summary: A talk. Venue: The Pub, E1 6JJ FAQs: …', "A talk.", ["Jo Bloggs"]],
+    ];
+    for (const [title, text, description, speakers] of cases) assert.deepEqual(pokDescription(text, title), { description, speakers }, text);
   });
   it("SAS: teasers from the listing API", () => {
     const teaser = sasTeaser(readFileSync(new URL("./fixtures/sas-teaser.html", import.meta.url), "utf8"));
