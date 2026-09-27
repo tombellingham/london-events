@@ -158,6 +158,21 @@ test("day headings are blue, with the relative day in heavy type", async ({ page
   await expect(rel).toHaveCSS("font-weight", "800");
 });
 
+test("the title goes home, with every filter cleared", async ({ page }) => {
+  await open(page, "?when=month&price=paid&q=bergson&off=gamma");
+  const home = page.getByRole("link", { name: "Talks & lectures in London" });
+  await expect(home).toHaveAttribute("href", "./");
+  await home.click();
+  await expect(page).toHaveURL("http://127.0.0.1:4173/");
+  await expect(page.getByRole("button", { name: "Next 7 days" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Any", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Search")).toHaveValue("");
+  await expect(count(page)).toHaveText("5 events in the next 7 days");
+  // Nothing comes back from this browser's memory either.
+  await page.reload();
+  await expect(count(page)).toHaveText("5 events in the next 7 days");
+});
+
 test("dd/mm picks a single day, which is never saved", async ({ page }) => {
   await open(page, "?price=paid");
   const pick = page.locator("#pick-date");
@@ -211,7 +226,7 @@ test("the events page shows when it was updated, and no other status", async ({ 
   await expect(page.getByText(/\bok\b|failed/)).toHaveCount(0);
   await expect(page.locator(".health-pill, .spark, .health-table")).toHaveCount(0);
   await expect(page.locator(".source", { hasText: "Gamma College" })).not.toHaveClass(/source--(?:ok|empty|error)/);
-  await expect(page.locator(".colophon a")).toHaveCount(0);
+  await expect(page.locator("footer")).toHaveCount(0);
   await page.getByRole("link", { name: "Sources", exact: true }).click();
   await expect(page).toHaveURL(/\/sources\/$/);
   await expect(page.getByRole("heading", { name: "Sources", level: 1 })).toBeVisible();
@@ -221,7 +236,7 @@ test("the events page shows when it was updated, and no other status", async ({ 
 test("the sources page: totals, per-source detail, recent runs and raw data", async ({ page }) => {
   const errors = await open(page, "sources/");
   await expect(page.locator(".masthead__nav a")).toHaveText(["Events"]);
-  await expect(page.locator(".colophon a")).toHaveCount(0);
+  await expect(page.locator("footer")).toHaveCount(0);
   const header = page.locator("#health-summary");
   await expect(header).toContainText("Last updated Thu 1 Oct, 05:30");
   await expect(header).toContainText("took 2 min 0 s");

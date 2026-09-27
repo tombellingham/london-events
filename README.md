@@ -9,7 +9,8 @@ full event list ships to the browser inside the page; the filters (today,
 tomorrow, the next 7 or 30 days or one picked date; price; source; search) run
 client-side, and sources with nothing under the current filters are faded out.
 Filters live in the URL (so they can be shared) and in the browser, except a
-picked date, which is deliberately never saved. There is no backend.
+picked date, which is deliberately never saved; clicking the title clears them
+all. There is no backend.
 
 ## How it works
 
