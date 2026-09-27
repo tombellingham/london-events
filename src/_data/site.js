@@ -1,7 +1,7 @@
 /**
  * Build-time data for both pages: reads what `npm run scrape` wrote to .build/
  * and prepares (a) the JSON blob that ships to the events page, where all
- * filtering happens, and (b) everything the (static) status page shows.
+ * filtering happens, and (b) everything the (static) sources page shows.
  */
 
 import { existsSync, readFileSync } from "node:fs";

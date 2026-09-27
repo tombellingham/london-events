@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { NOW } from "./fixture.ts";
 
-/** Opens a page of the fixture site ("" = the events page, "status/", or a "?query"). */
+/** Opens a page of the fixture site ("" = the events page, "sources/", or a "?query"). */
 async function open(page: Page, query = ""): Promise<string[]> {
   const errors: string[] = [];
   page.on("pageerror", (err) => errors.push(String(err)));
@@ -211,13 +211,17 @@ test("the events page shows when it was updated, and no other status", async ({ 
   await expect(page.getByText(/\bok\b|failed/)).toHaveCount(0);
   await expect(page.locator(".health-pill, .spark, .health-table")).toHaveCount(0);
   await expect(page.locator(".source", { hasText: "Gamma College" })).not.toHaveClass(/source--(?:ok|empty|error)/);
-  await page.getByRole("link", { name: "Scraper status and raw data" }).click();
-  await expect(page).toHaveURL(/\/status\/$/);
-  await expect(page.getByRole("heading", { name: "Status", level: 1 })).toBeVisible();
+  await expect(page.locator(".colophon a")).toHaveCount(0);
+  await page.getByRole("link", { name: "Sources", exact: true }).click();
+  await expect(page).toHaveURL(/\/sources\/$/);
+  await expect(page.getByRole("heading", { name: "Sources", level: 1 })).toBeVisible();
+  await expect(page).toHaveTitle("Sources · Talks & lectures in London");
 });
 
-test("the status page: totals, per-source detail and recent runs", async ({ page }) => {
-  const errors = await open(page, "status/");
+test("the sources page: totals, per-source detail, recent runs and raw data", async ({ page }) => {
+  const errors = await open(page, "sources/");
+  await expect(page.locator(".masthead__nav a")).toHaveText(["Events"]);
+  await expect(page.locator(".colophon a")).toHaveCount(0);
   const header = page.locator("#health-summary");
   await expect(header).toContainText("Last updated Thu 1 Oct, 05:30");
   await expect(header).toContainText("took 2 min 0 s");
@@ -240,6 +244,10 @@ test("the status page: totals, per-source detail and recent runs", async ({ page
   await beta.getByText("1 warning").click();
   await expect(beta).toContainText("stopped paginating at page 2: HTTP 500");
 
+  // Raw data comes last, as a titled section of its own.
+  const rawData = page.getByRole("heading", { name: "Raw data", level: 1 });
+  await expect(rawData).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector(".health")!.compareDocumentPosition(document.querySelector("#data")!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
   await page.getByRole("link", { name: "health.json" }).click();
   await expect(page).toHaveURL(/\/data\/health\.json$/);
   await page.goBack();
@@ -262,7 +270,7 @@ test("warns when the data is stale, on both pages", async ({ page }) => {
   await page.clock.setFixedTime(new Date(NOW.getTime() + 3 * 24 * 3600 * 1000));
   await page.goto("/");
   await expect(page.locator("#updated .health-stale")).toHaveText("Data is 3 days old");
-  await page.goto("/status/");
+  await page.goto("/sources/");
   await expect(page.locator("#health-summary .health-stale")).toHaveText("Data is 3 days old");
 });
 

@@ -28,8 +28,8 @@ scraper/
     published.ts    reads back what the last deploy published (history, per-source snapshots)
   scrape.ts         CLI → .build/events.json, health.json, history.json, sources/<id>.json
   validate.ts       sanity checks before anything is published
-src/                Eleventy site: index.njk (events, filtered by assets/app.js), status.njk
-                    (the status page), _includes/base.njk (shared shell), assets/style.css
+src/                Eleventy site: index.njk (events, filtered by assets/app.js), sources.njk
+                    (the sources page), _includes/base.njk (shared shell), assets/style.css
 tests/unit          node:test unit tests
 tests/e2e           Playwright tests (fixture site with a pinned clock, plus a smoke test of the real build)
 scripts/probe.mjs   maintenance tool: capture a page's HTML and its XHR/API traffic
@@ -63,7 +63,7 @@ record wins and the others are listed under "Also listed by".
 
 **Health.** Every run records, per source: ok / empty / failed, events listed,
 events found, drop reasons, requests, duration and warnings. All of that lives
-on a separate status page (`/status/`, linked from the footer): totals and a
+on a separate sources page (`/sources/`, the Sources link on the events page): totals and a
 sparkline of recent runs, then a row per source with its error, warnings and
 history. The events page itself only says when it was last updated, plus a
 "Data is N days old" warning if the daily job has stopped deploying.
@@ -76,7 +76,7 @@ updated copies:
 - `data/sources/<id>.json`: each source's last good scrape (its normalised
   events before cross-source de-duplication). When a source fails, the run
   falls back on this: its still-upcoming events are shown (re-checked against
-  the current rules) and the status page says which day they're from. The
+  the current rules) and the sources page says which day they're from. The
   snapshot is republished unchanged, so this holds for up to 7 days of
   failures; after that the source's events disappear until it works again.
 
@@ -172,14 +172,14 @@ Useful environment variables:
   are never solved. The British Academy, Institute of Physics and School of
   Advanced Study let GitHub's runners through on some days and not others,
   so they may show red now and then. Their last good events stay listed
-  meanwhile, and the status page says so. The Royal Society of Medicine was
+  meanwhile, and the sources page says so. The Royal Society of Medicine was
   dropped: it blocks every automated visitor.
 - **Pints of Knowledge** sells through Ticket Tailor, which shows automated
   visitors from cloud machines an interactive "Verify you are human" check.
   Its talks (title, time, venue, ticket link) come instead from the public
   feed behind Pints of Knowledge's own venue map, which isn't behind the
   check. Descriptions and speakers exist only on Ticket Tailor, so they're
-  missing on days the check appears (the status page shows a warning).
+  missing on days the check appears (the sources page shows a warning).
 - **RSA** is read from its Eventbrite organiser page (thersa.org blocks
   automated visitors), so only talks sold through Eventbrite appear.
 - **UCL** is read from its public events feed, since ucl.ac.uk blocks
