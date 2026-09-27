@@ -17,6 +17,8 @@
   --error: #c4312b;
   --highlight: #fff3b0;
   --day: #045ab6;
+  --tag-free: #5e9971;
+  --tag-paid: #b83076;
   --measure: 720px;
 }
 
@@ -442,11 +444,18 @@ h1 {
   font-weight: 500;
 }
 .tag {
+  padding: 0 0.3rem;
+  border-radius: 0.3rem;
+  margin-right: 0.45rem;
+  color: white;
+  font-weight: 600;
   white-space: nowrap;
 }
 .tag--free {
-  color: var(--ok);
-  font-weight: 600;
+  background: var(--tag-free);
+}
+.tag--paid {
+  background: var(--tag-paid);
 }
 .event__speakers {
   font-size: 0.8125rem;
