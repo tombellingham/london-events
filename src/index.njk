@@ -4,13 +4,13 @@ root: ""
 ---
 {% extends "base.njk" %}
 
-{% block title %}London Talks · lectures, debates &amp; talks across London{% endblock %}
+{% block title %}Talks and lectures in London{% endblock %}
 {% block description %}In-person talks, lectures and debates at {{ site.totals.sources }} London institutions, gathered daily. Filter by day, price and venue.{% endblock %}
+{% block heading %}Talks and lectures in London{% endblock %}
 {% block nav %}<a href="#sources">Sources</a>{% endblock %}
 
 {% block content %}
     <section class="intro">
-      <h1>Talks &amp; lectures in London</h1>
       <p class="lede">
         {{ site.eventCount }} upcoming in-person talks, lectures and debates from {{ site.totals.sources }} London institutions, gathered every morning.
       </p>
@@ -21,7 +21,7 @@ root: ""
       <div class="filter" role="group" aria-labelledby="when-label">
         <h2 class="label" id="when-label">When</h2>
         <div class="choices" data-filter="when">
-          <button type="button" data-value="today">Today</button><span class="sep">·</span><button type="button" data-value="tomorrow">Tomorrow</button><span class="sep">·</span><button type="button" data-value="week">Next 7 days</button><span class="sep">·</span><button type="button" data-value="month">Next 30 days</button>
+          <button type="button" data-value="today">Today</button><span class="sep">·</span><button type="button" data-value="tomorrow">Tomorrow</button><span class="sep">·</span><button type="button" data-value="week">Next 7 days</button><span class="sep">·</span><button type="button" data-value="month">Next 30 days</button><span class="sep">·</span><span class="date-pick"><button type="button" data-value="date" id="pick-date" aria-label="Pick a date">dd/mm</button><input type="date" id="date-input" class="date-input" tabindex="-1" aria-hidden="true"></span>
         </div>
       </div>
       <div class="filter" role="group" aria-labelledby="price-label">

@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { sources } from "../../scraper/sources/index.ts";
 import { parseSouthbankDates } from "../../scraper/sources/southbank.ts";
-import { pokSpeakers } from "../../scraper/sources/pints-of-knowledge.ts";
+import { pokFeedEvents, pokSpeakers, type MapFeed } from "../../scraper/sources/pints-of-knowledge.ts";
 import { readFileSync } from "node:fs";
 import { sasDetails, sasTeaser } from "../../scraper/sources/sas.ts";
 import { baApiEvent, baDetails } from "../../scraper/sources/british-academy.ts";
@@ -32,6 +32,16 @@ describe("source-specific parsers", () => {
       { date: "2027-09-04", time: "19:30" },
       { date: "2027-09-05", time: "19:30" },
     ]);
+  });
+  it("Pints of Knowledge: talks from the venue map feed (published only)", () => {
+    const events = pokFeedEvents(JSON.parse(fixture("pok-map.json")) as MapFeed);
+    assert.deepEqual(
+      events.map((e) => [e.title, e.start, e.location, e.url]),
+      [
+        ["“Lessons from the Wild Side: What Strange Animals Teach us About Understanding Human Disease”", { date: "2026-10-11", time: "12:00" }, "BOX Piccadilly, 21-23 Shaftesbury Ave, London W1D 7EF", "https://www.tickettailor.com/events/pintsofknowledge/2383086"],
+        ["“A Physicist's Guide to Simulating the Universe”", { date: "2026-09-28", time: "19:00" }, "Swingers West End, 15 John Prince's St, London W1G 0JW", "https://www.tickettailor.com/events/pintsofknowledge/2339821"],
+      ],
+    );
   });
   it("Pints of Knowledge: speaker from the 'With …' line", () => {
     assert.deepEqual(pokSpeakers('"100 Facts About London"With Jonnie Fielding (Bowl of Chalk)\nDetails: …'), ["Jonnie Fielding"]);

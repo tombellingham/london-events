@@ -27,7 +27,8 @@ export function preferBrowser(...hosts: string[]): void {
   for (const host of hosts) walledHosts.add(host);
 }
 
-function isBlocked(err: unknown): err is HttpError {
+/** A bot wall (Cloudflare and co.), as opposed to an ordinary HTTP failure. */
+export function isBlocked(err: unknown): err is HttpError {
   return err instanceof HttpError && err.blocked;
 }
 

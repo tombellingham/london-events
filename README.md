@@ -1,12 +1,15 @@
-# London Talks
+# Talks and lectures in London
 
 A daily-scraped listing of in-person talks, lectures and debates at 34 London institutions:
 **https://tombellingham.github.io/london-events/**
 
 Every morning a GitHub Actions job scrapes each institution's events pages,
 normalises and de-duplicates the results, and publishes a static page. The
-full event list ships to the browser inside the page; the filters (day range,
-price, source, search) run client-side. There is no backend.
+full event list ships to the browser inside the page; the filters (today,
+tomorrow, the next 7 or 30 days or one picked date; price; source; search) run
+client-side, and sources with nothing under the current filters are faded out.
+Filters live in the URL (so they can be shared) and in the browser, except a
+picked date, which is deliberately never saved. There is no backend.
 
 ## How it works
 
@@ -104,7 +107,7 @@ the next run reads those back.
 | Linnean Society | VeryConnect events API |
 | London Fortean Society | Blogger JSON feed |
 | LSE | Site's Contensis content API |
-| Pints of Knowledge | Ticket Tailor box office + event pages |
+| Pints of Knowledge | The feed behind its "Find a talk near you" map; Ticket Tailor event pages for descriptions and speakers when reachable (see below) |
 | Royal Academy of Arts | "Talks & lectures" listing + event pages |
 | Royal Astronomical Society | Events & meetings listing (paginated) + event pages |
 | Royal Geographical Society | Site's listing API + event pages; London events only |
@@ -166,11 +169,17 @@ Useful environment variables:
 
 - **Bot protection.** Several sites sit behind Cloudflare. Those that let a
   real browser through are read with headed Chromium; interactive challenges
-  are never solved. The British Academy, Institute of Physics, Pints of
-  Knowledge and School of Advanced Study let GitHub's runners through on some
-  days and not others, so they may show red now and then. Their last good
-  events stay listed meanwhile, and the status page says so. The Royal
-  Society of Medicine was dropped: it blocks every automated visitor.
+  are never solved. The British Academy, Institute of Physics and School of
+  Advanced Study let GitHub's runners through on some days and not others,
+  so they may show red now and then. Their last good events stay listed
+  meanwhile, and the status page says so. The Royal Society of Medicine was
+  dropped: it blocks every automated visitor.
+- **Pints of Knowledge** sells through Ticket Tailor, which shows automated
+  visitors from cloud machines an interactive "Verify you are human" check.
+  Its talks (title, time, venue, ticket link) come instead from the public
+  feed behind Pints of Knowledge's own venue map, which isn't behind the
+  check. Descriptions and speakers exist only on Ticket Tailor, so they're
+  missing on days the check appears (the status page shows a warning).
 - **RSA** is read from its Eventbrite organiser page (thersa.org blocks
   automated visitors), so only talks sold through Eventbrite appear.
 - **UCL** is read from its public events feed, since ucl.ac.uk blocks

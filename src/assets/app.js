@@ -1,4 +1,4 @@
-/* London Talks — all filtering happens here, on the full event blob that is
+/* Talks and lectures in London — all filtering happens here, on the full event blob that is
    inlined into the page at build time. No framework, no build step. */
 
 (function () {
@@ -12,6 +12,9 @@
     SOURCE_BY_ID[s.id] = s;
   });
 
+  // Day ranges relative to today (London). "date" (one day picked with the
+  // dd/mm button) is also a `when`, but deliberately never saved: not in the
+  // URL, where it would get bookmarked by accident, nor in this browser.
   var WINDOWS = { today: [0, 1], tomorrow: [1, 2], week: [0, 7], month: [0, 30] };
   var WINDOW_LABELS = { today: "today", tomorrow: "tomorrow", week: "in the next 7 days", month: "in the next 30 days" };
   var DEFAULTS = { when: "week", price: "any", q: "", off: [] };
@@ -83,20 +86,23 @@
 
   function writeState(state) {
     var params = new URLSearchParams();
-    if (state.when !== DEFAULTS.when) params.set("when", state.when);
+    var when = state.when === "date" ? lastWindow : state.when;
+    if (when !== DEFAULTS.when) params.set("when", when);
     if (state.price !== DEFAULTS.price) params.set("price", state.price);
     if (state.q) params.set("q", state.q);
     if (state.off.length) params.set("off", state.off.join(","));
     var qs = params.toString();
     history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ when: state.when, price: state.price, off: state.off }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ when: when, price: state.price, off: state.off }));
     } catch (e) {
       /* private mode etc. */
     }
   }
 
   var state = readState();
+  // The day range to save while a single date is picked.
+  var lastWindow = state.when;
 
   // ---------------------------------------------------------------------------
   // Search
@@ -107,6 +113,13 @@
       .normalize("NFKD")
       .replace(/[\u0300-\u036f]/g, "");
   }
+
+  // Events per source with no filters at all, and the last day with events.
+  var TOTALS = {};
+  EVENTS.forEach(function (e) {
+    TOTALS[e.source] = (TOTALS[e.source] || 0) + 1;
+  });
+  var LAST_DATE = EVENTS.length ? EVENTS[EVENTS.length - 1].date : null;
 
   var HAYSTACK = EVENTS.map(function (e) {
     var src = SOURCE_BY_ID[e.source];
@@ -122,8 +135,11 @@
   // ---------------------------------------------------------------------------
   // Filtering
 
-  function inWindow(e, range, today) {
-    return e.date >= addDays(today, range[0]) && e.date < addDays(today, range[1]);
+  /** [first day, day after the last] for the current `when`. */
+  function dayRange(st, today) {
+    if (st.when === "date") return [st.date, addDays(st.date, 1)];
+    var range = WINDOWS[st.when];
+    return [addDays(today, range[0]), addDays(today, range[1])];
   }
 
   function matchesFacets(e, st) {
@@ -133,8 +149,7 @@
   }
 
   function filter(st) {
-    var today = londonNow().date;
-    var range = WINDOWS[st.when];
+    var days = dayRange(st, londonNow().date);
     var qs = terms(st.q);
     var off = {};
     st.off.forEach(function (id) {
@@ -144,7 +159,7 @@
     var out = [];
     for (var i = 0; i < EVENTS.length; i++) {
       var e = EVENTS[i];
-      if (!inWindow(e, range, today) || !matchesFacets(e, st)) continue;
+      if (e.date < days[0] || e.date >= days[1] || !matchesFacets(e, st)) continue;
       var hay = HAYSTACK[i];
       var ok = true;
       for (var t = 0; t < qs.length; t++) {
@@ -254,6 +269,8 @@
   }
 
   var visibleLimit = PAGE_SIZE;
+  var dateButton = document.getElementById("pick-date");
+  var dateInput = document.getElementById("date-input");
   var eventsEl = document.getElementById("events");
   var countEl = document.getElementById("result-count");
 
@@ -291,12 +308,15 @@
       html = '<p class="empty">No events match these filters' + (state.off.length || state.q || state.price !== "any" ? '. <button type="button" id="reset-filters">Reset filters</button>' : ".") + "</p>";
     }
     eventsEl.innerHTML = html;
-    countEl.textContent = list.length.toLocaleString("en-GB") + (list.length === 1 ? " event " : " events ") + WINDOW_LABELS[state.when] + (state.off.length ? " · " + (SOURCES.length - state.off.length) + " of " + SOURCES.length + " sources" : "");
+    var whenLabel = state.when === "date" ? "on " + dayLabel(state.date) : WINDOW_LABELS[state.when];
+    countEl.textContent = list.length.toLocaleString("en-GB") + (list.length === 1 ? " event " : " events ") + whenLabel + (state.off.length ? " · " + (SOURCES.length - state.off.length) + " of " + SOURCES.length + " sources" : "");
 
     renderSourceCounts(result.perSource);
     syncControls();
   }
 
+  // Each source shows how many events it has under the current filters
+  // (whether or not it's switched on); one with none is faded and locked.
   function renderSourceCounts(perSource) {
     var active = SOURCES.length - state.off.length;
     document.getElementById("sources-count").textContent = active + " of " + SOURCES.length;
@@ -308,7 +328,12 @@
         counter.className = "source__count";
         label.appendChild(counter);
       }
-      counter.textContent = String(perSource[input.value] || 0);
+      var n = perSource[input.value] || 0;
+      counter.textContent = String(n);
+      label.classList.toggle("source--none", n === 0);
+      input.disabled = n === 0;
+      if (n) label.removeAttribute("title");
+      else label.title = TOTALS[input.value] ? "No events match the current filters" : "No upcoming events";
     });
   }
 
@@ -322,12 +347,16 @@
     document.querySelectorAll("#source-list input").forEach(function (input) {
       input.checked = state.off.indexOf(input.value) < 0;
     });
+    var picked = state.when === "date";
+    dateButton.textContent = picked ? state.date.slice(8, 10) + "/" + state.date.slice(5, 7) : "dd/mm";
+    dateButton.setAttribute("aria-label", picked ? "Showing " + dayLabel(state.date) + ". Pick another date" : "Pick a date");
     var search = document.getElementById("search");
     if (document.activeElement !== search) search.value = state.q;
   }
 
   function update(patch) {
     for (var k in patch) state[k] = patch[k];
+    if (patch.when && patch.when !== "date") lastWindow = patch.when;
     visibleLimit = PAGE_SIZE;
     writeState(state);
     render();
@@ -340,10 +369,37 @@
     group.addEventListener("click", function (ev) {
       var btn = ev.target.closest("button[data-value]");
       if (!btn) return;
+      if (btn === dateButton) {
+        openDatePicker();
+        return;
+      }
       var patch = {};
       patch[group.getAttribute("data-filter")] = btn.getAttribute("data-value");
       update(patch);
     });
+  });
+
+  // dd/mm: the browser's own date picker, from a hidden date input under the button.
+  function openDatePicker() {
+    var today = londonNow().date;
+    dateInput.min = today;
+    dateInput.max = LAST_DATE && LAST_DATE > today ? LAST_DATE : today;
+    dateInput.value = state.when === "date" ? state.date : "";
+    try {
+      dateInput.showPicker();
+    } catch (e) {
+      // No showPicker() (older browsers): show the input itself instead.
+      dateInput.classList.add("date-input--shown");
+      dateInput.removeAttribute("aria-hidden");
+      dateInput.focus();
+    }
+  }
+
+  dateInput.addEventListener("change", function () {
+    dateInput.classList.remove("date-input--shown");
+    dateInput.setAttribute("aria-hidden", "true");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) update({ when: "date", date: dateInput.value });
+    else if (state.when === "date") update({ when: lastWindow });
   });
 
   var searchTimer;

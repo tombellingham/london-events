@@ -8,13 +8,13 @@ root: "../"
 <span class="spark" role="img" aria-label="{{ label }}">{% for b in bars %}<i class="{{ b.cls }}" style="height:{{ b.height }}%" title="{{ b.title }}"></i>{% endfor %}</span>
 {%- endmacro %}
 
-{% block title %}Status · London Talks{% endblock %}
+{% block title %}Status · Talks and lectures in London{% endblock %}
 {% block description %}How the daily scrape of {{ site.totals.sources }} London institutions went: which sources worked, which failed, and recent history.{% endblock %}
+{% block heading %}Status{% endblock %}
 {% block nav %}<a href="../">Events</a><a href="#data">Raw data</a>{% endblock %}
 
 {% block content %}
     <section class="intro">
-      <h1>Status</h1>
       <p class="lede">Every source is scraped once a day. This page shows how the last run went and how each source has done recently.</p>
       <p class="health-line health-line--summary" id="health-summary"{% if site.generatedAt %} data-generated-at="{{ site.generatedAt }}"{% endif %}>
         {% if site.generatedLabel %}<span>Updated {{ site.generatedLabel }}</span>{% if site.run.duration %}<span class="sep">·</span><span>took {{ site.run.duration }}</span>{% endif %}<span class="sep">·</span>{% endif %}
