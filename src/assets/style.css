@@ -1,4 +1,4 @@
-/* Talks and lectures in London — typography and layout after ongoing.in: one
+/* Talks & lectures in London — typography and layout after ongoing.in: one
    narrow column, serif headlines, grotesk text, tiny tracked labels,
    middot-separated lists. */
 
@@ -16,6 +16,7 @@
   --empty: #c47f17;
   --error: #c4312b;
   --highlight: #fff3b0;
+  --day: #045ab6;
   --measure: 720px;
 }
 
@@ -32,6 +33,7 @@
     --empty: #e0a33b;
     --error: #ec6a5f;
     --highlight: #4a4011;
+    --day: #4c9bf0; /* #045ab6 is too dark to read on --bg here */
   }
 }
 
@@ -99,7 +101,7 @@ button {
 /* The page title, with the page links on the same line. */
 .masthead {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.5rem;
@@ -111,6 +113,7 @@ button {
 
 .masthead__nav {
   flex-shrink: 0;
+  margin-top: 0.18rem; /* lines its capitals up with the title's */
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -135,6 +138,9 @@ h1 {
   color: var(--text-secondary);
   margin: 0 0 0.6rem;
   max-width: 36em;
+}
+.lede strong {
+  font-weight: 700;
 }
 
 .health-line {
@@ -373,19 +379,20 @@ h1 {
 }
 .day__title {
   font-family: var(--font-sans);
-  font-size: 0.6875rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--day);
   margin: 0 0 0.25rem;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--day);
   display: flex;
   justify-content: space-between;
 }
 .day__title .day__rel {
-  color: var(--text);
+  color: var(--day);
+  font-weight: 800;
 }
 
 .event {
@@ -592,6 +599,9 @@ mark {
   }
   h1 {
     font-size: 1.55rem;
+  }
+  .masthead__nav {
+    margin-top: 0.11rem;
   }
   .filter {
     grid-template-columns: 1fr;

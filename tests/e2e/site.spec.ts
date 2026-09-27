@@ -116,15 +116,28 @@ test("filters are shareable through the URL", async ({ page }) => {
   await expect(page.locator(".event__title")).toHaveText(["Élan vital: a talk on Bergson"]);
 });
 
-test("the title shares a line with the page links", async ({ page }) => {
+test("the title shares its top line with the page links", async ({ page }) => {
   await open(page);
   const title = page.getByRole("heading", { level: 1 });
-  await expect(title).toHaveText("Talks and lectures in London");
-  await expect(page).toHaveTitle("Talks and lectures in London");
+  await expect(title).toHaveText("Talks & lectures in London");
+  await expect(page).toHaveTitle("Talks & lectures in London");
   await expect(page.getByText("London Talks", { exact: false })).toHaveCount(0);
   const [h1, nav] = await Promise.all([title.boundingBox(), page.getByRole("link", { name: "Sources" }).boundingBox()]);
-  expect(nav!.y).toBeLessThan(h1!.y + h1!.height);
-  expect(nav!.y + nav!.height).toBeGreaterThan(h1!.y);
+  // Level with the top of the title, not its baseline.
+  expect(nav!.y - h1!.y).toBeGreaterThanOrEqual(0);
+  expect(nav!.y - h1!.y).toBeLessThan(6);
+});
+
+test("day headings are blue, with the relative day in heavy type", async ({ page }) => {
+  await open(page);
+  const heading = page.locator(".day__title").first();
+  await expect(heading).toHaveCSS("color", "rgb(4, 90, 182)");
+  await expect(heading).toHaveCSS("border-bottom-color", "rgb(4, 90, 182)");
+  await expect(heading).toHaveCSS("font-size", "12.8px");
+  const rel = page.locator(".day__rel").first();
+  await expect(rel).toHaveText(/Today|Tomorrow/);
+  await expect(rel).toHaveCSS("color", "rgb(4, 90, 182)");
+  await expect(rel).toHaveCSS("font-weight", "800");
 });
 
 test("dd/mm picks a single day, which is never saved", async ({ page }) => {
@@ -174,7 +187,9 @@ test("sources without events under the filters are faded and locked", async ({ p
 
 test("the events page shows when it was updated, and no other status", async ({ page }) => {
   await open(page);
-  await expect(page.locator("#updated")).toHaveText("Updated Thu 1 Oct, 05:30");
+  await expect(page.locator(".lede")).toHaveText(/^\s*\d+ upcoming in-person talks & lectures from 3 institutions\s*$/);
+  await expect(page.locator(".lede strong")).toHaveText("in-person");
+  await expect(page.locator("#updated")).toHaveText("Last updated Thu 1 Oct, 05:30");
   await expect(page.getByText(/\bok\b|failed/)).toHaveCount(0);
   await expect(page.locator(".health-pill, .spark, .health-table")).toHaveCount(0);
   await expect(page.locator(".source", { hasText: "Gamma College" })).not.toHaveClass(/source--(?:ok|empty|error)/);
@@ -186,7 +201,7 @@ test("the events page shows when it was updated, and no other status", async ({ 
 test("the status page: totals, per-source detail and recent runs", async ({ page }) => {
   const errors = await open(page, "status/");
   const header = page.locator("#health-summary");
-  await expect(header).toContainText("Updated Thu 1 Oct, 05:30");
+  await expect(header).toContainText("Last updated Thu 1 Oct, 05:30");
   await expect(header).toContainText("took 2 min 0 s");
   await expect(header).toContainText("2 ok");
   await expect(header).toContainText("1 failed");

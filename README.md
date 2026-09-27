@@ -1,6 +1,6 @@
-# Talks and lectures in London
+# Talks & lectures in London
 
-A daily-scraped listing of in-person talks, lectures and debates at 34 London institutions:
+A daily-scraped listing of in-person talks and lectures at 34 London institutions:
 **https://tombellingham.github.io/london-events/**
 
 Every morning a GitHub Actions job scrapes each institution's events pages,
