@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { NOW } from "./fixture.ts";
 
 /** Opens a page of the fixture site ("" = the events page, "sources/", or a "?query"). */
@@ -16,6 +16,11 @@ async function open(page: Page, query = ""): Promise<string[]> {
 }
 
 const count = (page: Page) => page.locator("#result-count");
+/** The id of whatever a click at the middle of `target` would land on. */
+async function hitAt(page: Page, target: Locator): Promise<string | undefined> {
+  const box = (await target.boundingBox())!;
+  return page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.id, [box.x + box.width / 2, box.y + box.height / 2]);
+}
 
 test("renders the next 7 days by default, grouped by day", async ({ page }) => {
   const errors = await open(page);
@@ -177,6 +182,8 @@ test("dd/mm picks a single day, which is never saved", async ({ page }) => {
   await open(page, "?price=paid");
   const pick = page.locator("#pick-date");
   await expect(pick).toHaveText("dd/mm");
+  // With a mouse the button itself takes the click (and calls showPicker()).
+  expect(await hitAt(page, pick)).toBe("pick-date");
   await pick.click();
   await page.locator("#date-input").fill("2026-10-06");
   await expect(count(page)).toHaveText("1 event on Tuesday 6 October");

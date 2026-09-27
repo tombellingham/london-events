@@ -352,6 +352,7 @@
     var picked = state.when === "date";
     dateButton.textContent = picked ? state.date.slice(8, 10) + "/" + state.date.slice(5, 7) : "dd/mm";
     dateButton.setAttribute("aria-label", picked ? "Showing " + dayLabel(state.date) + ". Pick another date" : "Pick a date");
+    syncDateInput();
     var search = document.getElementById("search");
     if (document.activeElement !== search) search.value = state.q;
   }
@@ -381,12 +382,19 @@
     });
   });
 
-  // dd/mm: the browser's own date picker, from a hidden date input under the button.
-  function openDatePicker() {
+  // dd/mm: the browser's own date picker, from an invisible date input over the
+  // button. With a mouse or keyboard the button opens it with showPicker(). On
+  // touch screens the input takes the tap itself (see style.css), as iOS, where
+  // every browser is Safari underneath, won't open a picker from script.
+  function syncDateInput() {
     var today = londonNow().date;
     dateInput.min = today;
     dateInput.max = LAST_DATE && LAST_DATE > today ? LAST_DATE : today;
     dateInput.value = state.when === "date" ? state.date : "";
+  }
+
+  function openDatePicker() {
+    syncDateInput();
     try {
       dateInput.showPicker();
     } catch (e) {
@@ -396,6 +404,8 @@
       dateInput.focus();
     }
   }
+
+  dateInput.addEventListener("pointerdown", syncDateInput);
 
   dateInput.addEventListener("change", function () {
     dateInput.classList.remove("date-input--shown");
