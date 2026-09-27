@@ -580,21 +580,11 @@ mark {
 .data-files li + li {
   margin-top: 0.3rem;
 }
-.data-files a,
-.colophon a {
+.data-files a {
   border-bottom: 1px solid var(--rule);
 }
-.data-files a:hover,
-.colophon a:hover {
+.data-files a:hover {
   border-bottom-color: currentColor;
-}
-
-.colophon {
-  margin-top: 3rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--rule);
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
 }
 
 /* --- Small screens ----------------------------------------------------- */

@@ -436,6 +436,15 @@
     });
   });
 
+  // The title goes home: every filter back to its default, including the ones
+  // this browser remembers (a plain link to ./ would bring those back).
+  document.getElementById("home").addEventListener("click", function (ev) {
+    if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    ev.preventDefault();
+    update({ when: DEFAULTS.when, price: DEFAULTS.price, q: DEFAULTS.q, off: [] });
+    history.replaceState(null, "", location.pathname);
+  });
+
   eventsEl.addEventListener("click", function (ev) {
     if (ev.target.id === "show-more") {
       visibleLimit += PAGE_SIZE;
