@@ -1,0 +1,90 @@
+{
+ "success": true,
+ "venue_count": 3,
+ "event_count": 3,
+ "venues": [
+  {
+   "id": "box-piccadilly",
+   "name": "BOX Piccadilly",
+   "address": "21-23 Shaftesbury Ave, London W1D 7EF",
+   "postcode": "W1D 7EF",
+   "region": "Central London",
+   "capacity": 120,
+   "lat": 51.5109,
+   "lng": -0.1335,
+   "upcoming_events": [
+    {
+     "id": "ev_8975966",
+     "title": "“Lessons from the Wild Side: What Strange Animals Teach us About Understanding Human Disease”",
+     "start_at": 1791716400,
+     "end_at": 1791722700,
+     "checkout_url": "https://www.tickettailor.com/checkout/view-event/id/8975966/chk/64b2fd77e42875beafea86c798c8235c/",
+     "event_url": "https://www.tickettailor.com/events/pintsofknowledge/2383086",
+     "status": "published",
+     "venue_id": "box-piccadilly",
+     "availability_known": true,
+     "tickets_available": true,
+     "unavailable": false,
+     "availability_state": "available",
+     "available_status": null,
+     "unavailable_status": null
+    }
+   ]
+  },
+  {
+   "id": "swingers-west-end",
+   "name": "Swingers West End",
+   "address": "15 John Prince's St, London W1G 0JW",
+   "postcode": "W1G 0JW",
+   "region": "Central London",
+   "capacity": 120,
+   "lat": 51.515,
+   "lng": -0.1425,
+   "upcoming_events": [
+    {
+     "id": "ev_8800620",
+     "title": "“A Physicist's Guide to Simulating the Universe”",
+     "start_at": 1790618400,
+     "end_at": 1790623800,
+     "checkout_url": "https://www.tickettailor.com/checkout/view-event/id/8800620/chk/cadab8d9fe4efc2e248086bbb999dab7/",
+     "event_url": "https://www.tickettailor.com/events/pintsofknowledge/2339821",
+     "status": "published",
+     "venue_id": "swingers-west-end",
+     "availability_known": true,
+     "tickets_available": true,
+     "unavailable": false,
+     "availability_state": "available",
+     "available_status": null,
+     "unavailable_status": null
+    },
+    {
+     "id": "ev_0000001",
+     "title": "An unpublished talk",
+     "start_at": 1790618400,
+     "end_at": 1790623800,
+     "checkout_url": "https://www.tickettailor.com/checkout/view-event/id/8800620/chk/cadab8d9fe4efc2e248086bbb999dab7/",
+     "event_url": "https://www.tickettailor.com/events/pintsofknowledge/1",
+     "status": "draft",
+     "venue_id": "swingers-west-end",
+     "availability_known": true,
+     "tickets_available": true,
+     "unavailable": false,
+     "availability_state": "available",
+     "available_status": null,
+     "unavailable_status": null
+    }
+   ]
+  },
+  {
+   "id": "morpeth-arms",
+   "name": "Morpeth Arms",
+   "address": "58 Millbank, Westminster, London SW1P 4RW",
+   "postcode": "SW1P 4RW",
+   "region": "Central London",
+   "capacity": 90,
+   "lat": 51.4904,
+   "lng": -0.1255,
+   "upcoming_events": []
+  }
+ ]
+}

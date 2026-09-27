@@ -116,12 +116,68 @@ test("filters are shareable through the URL", async ({ page }) => {
   await expect(page.locator(".event__title")).toHaveText(["Élan vital: a talk on Bergson"]);
 });
 
+test("the title shares a line with the page links", async ({ page }) => {
+  await open(page);
+  const title = page.getByRole("heading", { level: 1 });
+  await expect(title).toHaveText("Talks and lectures in London");
+  await expect(page).toHaveTitle("Talks and lectures in London");
+  await expect(page.getByText("London Talks", { exact: false })).toHaveCount(0);
+  const [h1, nav] = await Promise.all([title.boundingBox(), page.getByRole("link", { name: "Sources" }).boundingBox()]);
+  expect(nav!.y).toBeLessThan(h1!.y + h1!.height);
+  expect(nav!.y + nav!.height).toBeGreaterThan(h1!.y);
+});
+
+test("dd/mm picks a single day, which is never saved", async ({ page }) => {
+  await open(page, "?price=paid");
+  const pick = page.locator("#pick-date");
+  await expect(pick).toHaveText("dd/mm");
+  await pick.click();
+  await page.locator("#date-input").fill("2026-10-06");
+  await expect(count(page)).toHaveText("1 event on Tuesday 6 October");
+  await expect(page.locator(".event__title")).toHaveText(["Élan vital: a talk on Bergson"]);
+  await expect(pick).toHaveText("06/10");
+  await expect(pick).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Next 7 days" })).toHaveAttribute("aria-pressed", "false");
+  // Not in the URL (only the other filters are), nor remembered by the browser.
+  await expect(page).toHaveURL(/\?price=paid$/);
+  await page.reload();
+  await expect(count(page)).toHaveText("2 events in the next 7 days");
+  await expect(pick).toHaveText("dd/mm");
+
+  // Choosing a range again puts dd/mm back.
+  await pick.click();
+  await page.locator("#date-input").fill("2026-10-21");
+  await expect(count(page)).toHaveText("1 event on Wednesday 21 October");
+  await page.getByRole("button", { name: "Next 30 days" }).click();
+  await expect(pick).toHaveText("dd/mm");
+  await expect(count(page)).toHaveText("3 events in the next 30 days");
+  await expect(page).toHaveURL(/when=month/);
+});
+
+test("sources without events under the filters are faded and locked", async ({ page }) => {
+  await open(page);
+  // Gamma's only event is 11 days away.
+  const gamma = page.locator(".source", { hasText: "Gamma College" });
+  await expect(gamma).toHaveClass(/source--none/);
+  await expect(gamma.locator("input")).toBeDisabled();
+  await expect(gamma).toHaveAttribute("title", "No events match the current filters");
+  await expect(page.locator(".source", { hasText: "Alpha Institute" })).not.toHaveClass(/source--none/);
+
+  await page.getByRole("button", { name: "Next 30 days" }).click();
+  await expect(gamma).not.toHaveClass(/source--none/);
+  await expect(gamma.locator("input")).toBeEnabled();
+
+  await page.getByLabel("Search").fill("bergson");
+  await expect(page.locator(".source--none")).toHaveText([/Alpha Institute/, /Gamma College/]);
+  await expect(page.locator(".source", { hasText: "The Beta Society" }).locator("input")).toBeEnabled();
+});
+
 test("the events page shows when it was updated, and no other status", async ({ page }) => {
   await open(page);
   await expect(page.locator("#updated")).toHaveText("Updated Thu 1 Oct, 05:30");
   await expect(page.getByText(/\bok\b|failed/)).toHaveCount(0);
   await expect(page.locator(".health-pill, .spark, .health-table")).toHaveCount(0);
-  await expect(page.locator(".source", { hasText: "Gamma College" })).toHaveAttribute("class", "source");
+  await expect(page.locator(".source", { hasText: "Gamma College" })).not.toHaveClass(/source--(?:ok|empty|error)/);
   await page.getByRole("link", { name: "Scraper status and raw data" }).click();
   await expect(page).toHaveURL(/\/status\/$/);
   await expect(page.getByRole("heading", { name: "Status", level: 1 })).toBeVisible();

@@ -6,7 +6,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}London Talks{% endblock %}</title>
+  <title>{% block title %}Talks and lectures in London{% endblock %}</title>
   <meta name="description" content="{% block description %}{% endblock %}">
   <meta name="color-scheme" content="light dark">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +18,7 @@
 <body>
   <div class="page">
     <header class="masthead">
-      <a class="wordmark" href="{{ root or './' }}"><span class="wordmark__cut">L</span>ONDON TALKS</a>
+      <h1>{% block heading %}{% endblock %}</h1>
       <nav class="masthead__nav" aria-label="Page">{% block nav %}{% endblock %}</nav>
     </header>
 

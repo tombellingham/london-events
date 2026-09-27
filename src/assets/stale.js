@@ -1,4 +1,4 @@
-/* London Talks — shared by both pages: a daily scrape that has stopped
+/* Talks and lectures in London — shared by both pages: a daily scrape that has stopped
    deploying should be obvious, not silent. Adds "Data is N days old" to the
    line carrying the build time (data-generated-at). */
 
