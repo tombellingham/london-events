@@ -8,7 +8,6 @@ import type { Source } from "../core/types.ts";
 import { fiveByFifteen } from "./5x15.ts";
 import { barbican } from "./barbican.ts";
 import { birkbeck } from "./birkbeck.ts";
-import { britishAcademy } from "./british-academy.ts";
 import { charterhouse } from "./charterhouse.ts";
 import { conwayHall } from "./conway-hall.ts";
 import { fortean } from "./fortean.ts";
@@ -33,7 +32,6 @@ import { royalSociety } from "./royal-society.ts";
 import { rsa } from "./rsa.ts";
 import { rsaa } from "./rsaa.ts";
 import { rsc } from "./rsc.ts";
-import { sas } from "./sas.ts";
 import { seedTalks } from "./seed-talks.ts";
 import { societyOfAntiquaries } from "./society-of-antiquaries.ts";
 import { southbank } from "./southbank.ts";
@@ -44,7 +42,6 @@ export const sources: Source[] = [
   fiveByFifteen,
   barbican,
   birkbeck,
-  britishAcademy,
   charterhouse,
   conwayHall,
   geologicalSociety,
@@ -69,7 +66,6 @@ export const sources: Source[] = [
   rsc,
   rsaa,
   rsa,
-  sas,
   seedTalks,
   societyOfAntiquaries,
   southbank,

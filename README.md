@@ -1,6 +1,6 @@
 # Talks & lectures in London
 
-A daily-scraped listing of in-person talks and lectures at 34 London institutions:
+A daily-scraped listing of in-person talks and lectures at 32 London institutions:
 **https://tombellingham.github.io/london-events/**
 
 Every morning a GitHub Actions job scrapes each institution's events pages,
@@ -91,7 +91,6 @@ the next run reads those back.
 | 5x15 | Events page cards |
 | Barbican | Talks & events listing (paginated) + event pages for venue/speakers |
 | Birkbeck | Events listing (paginated) + event pages; internal/student sessions excluded |
-| The British Academy | Events list (client-rendered, via browser) or its listing API + event pages |
 | The Charterhouse | Site's WordPress events API + event pages |
 | Conway Hall | What's on listing (paginated) + event pages; Sunday Concerts excluded |
 | Frontline Club | Eventbrite organiser API |
@@ -103,7 +102,7 @@ the next run reads those back.
 | How To Academy | Events calendar + event/tour pages (London dates only) |
 | Imperial College London | What's On events feed (talk-like types only) |
 | Institute of Physics | Events listing (paginated) + event pages; in-person London events only |
-| Intelligence Squared | Attend page + event pages (tour dates: London only) |
+| Intelligence Squared | Eventbrite organiser API (London dates only) |
 | King's College London | Site's Contensis content API (public lectures, seminars, …) |
 | Linnean Society | VeryConnect events API |
 | London Fortean Society | Blogger JSON feed |
@@ -116,7 +115,6 @@ the next run reads those back.
 | Royal Society of Chemistry | UK & Ireland events listing (paginated) + event pages; London only, courses excluded |
 | Royal Society for Asian Affairs | Events listing + event pages |
 | RSA | Eventbrite organiser API (RSA Public Talks) |
-| School of Advanced Study | Site's listing API + event pages (read inside the browser) |
 | Seed Talks | Events page (cards + JSON-LD) |
 | Society of Antiquaries | Events listing (paginated) + event pages |
 | Southbank Centre | Talks & debates listing (paginated) |
@@ -170,11 +168,13 @@ Useful environment variables:
 
 - **Bot protection.** Several sites sit behind Cloudflare. Those that let a
   real browser through are read with headed Chromium; interactive challenges
-  are never solved. The British Academy, Institute of Physics and School of
-  Advanced Study let GitHub's runners through on some days and not others,
-  so they may show red now and then. Their last good events stay listed
-  meanwhile, and the sources page says so. The Royal Society of Medicine was
-  dropped: it blocks every automated visitor.
+  are never solved. The Institute of Physics lets GitHub's runners through on some days and
+  not others, so it may show red now and then. Its last good events stay
+  listed meanwhile, and the sources page says so. Intelligence Squared's own
+  site is walled, so it is read from its Eventbrite listing. The Royal Society
+  of Medicine, The British Academy and the School of Advanced Study were
+  dropped: their sites, APIs and feeds block automated visitors on most or
+  all days, and they publish nowhere else.
 - **Pints of Knowledge** sells through Ticket Tailor, which shows automated
   visitors from cloud machines an interactive "Verify you are human" check.
   Its talks (title, time, venue, ticket link) come instead from the public
